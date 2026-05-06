@@ -15,9 +15,10 @@ datasource db {
 // do not modify existing values better auth generated
 
 model User {
-  id            String    @id
+  id            String    @id     
   name          String
   email         String
+  password      String?
   emailVerified Boolean   @default(false)
   image         String?
   createdAt     DateTime  @default(now())
