@@ -116,14 +116,136 @@
     --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* ═══════════════════════════════════════
+   ALLBET — GREEN ARCADE DESIGN SYSTEM
+   ═══════════════════════════════════════ */
+
+/* LIGHT MODE (default) */
+:root {
+  --ab-bg-deep: #F0FDF4;
+  --ab-bg: #FFFFFF;
+  --ab-panel: #F0FDF4;
+  --ab-panel-raised: #DCFCE7;
+  --ab-panel-border: rgba(34, 197, 94, 0.2);
+  --ab-sidebar-border: rgba(34, 197, 94, 0.15);
+  --ab-backdrop: rgba(240, 253, 244, 0.85);
+  --ab-modal-bg: #FFFFFF;
+  --ab-modal-border: rgba(34, 197, 94, 0.25);
+  --ab-card-bg: #F0FDF4;
+  --ab-card-border: rgba(34, 197, 94, 0.2);
+  --ab-btn-subtle-bg: rgba(34, 197, 94, 0.08);
+  --ab-btn-subtle-border: rgba(34, 197, 94, 0.2);
+  --ab-dot-grid: rgba(34, 197, 94, 0.05);
+  --ab-divider: rgba(34, 197, 94, 0.12);
+
+  --ab-green: #22C55E;
+  --ab-green-bright: #4ADE80;
+  --ab-green-dim: rgba(34, 197, 94, 0.1);
+  --ab-green-fill: #DCFCE7;
+  --ab-blue: #3B82F6;
+  --ab-blue-dim: rgba(59, 130, 246, 0.1);
+  --ab-orange: #F59E0B;
+  --ab-orange-dim: rgba(245, 158, 11, 0.1);
+  --ab-orange-fill: #FEF3C7;
+  --ab-red: #EF4444;
+  --ab-red-dim: rgba(239, 68, 68, 0.1);
+  --ab-purple: #8B5CF6;
+
+  --ab-text: #1A2E1A;
+  --ab-text-dim: #4B6B4B;
+  --ab-text-muted: #94A894;
+
+  --ab-gradient-accent: linear-gradient(135deg, #22C55E, #4ADE80);
+  --ab-tab-active: #22C55E;
+  --ab-tab-active-text: #FFFFFF;
+}
+
+/* DARK MODE */
+.dark {
+  --ab-bg-deep: #0A1A0A;
+  --ab-bg: #0F1F0F;
+  --ab-panel: #142814;
+  --ab-panel-raised: #1A331A;
+  --ab-panel-border: rgba(74, 222, 128, 0.15);
+  --ab-sidebar-border: rgba(74, 222, 128, 0.1);
+  --ab-backdrop: rgba(10, 26, 10, 0.85);
+  --ab-modal-bg: #0F1F0F;
+  --ab-modal-border: rgba(74, 222, 128, 0.2);
+  --ab-card-bg: #142814;
+  --ab-card-border: rgba(74, 222, 128, 0.12);
+  --ab-btn-subtle-bg: rgba(74, 222, 128, 0.06);
+  --ab-btn-subtle-border: rgba(74, 222, 128, 0.15);
+  --ab-dot-grid: rgba(74, 222, 128, 0.04);
+  --ab-divider: rgba(74, 222, 128, 0.1);
+
+  --ab-green: #4ADE80;
+  --ab-green-bright: #86EFAC;
+  --ab-green-dim: rgba(74, 222, 128, 0.12);
+  --ab-green-fill: rgba(74, 222, 128, 0.08);
+  --ab-blue: #60A5FA;
+  --ab-blue-dim: rgba(96, 165, 250, 0.12);
+  --ab-orange: #FBBF24;
+  --ab-orange-dim: rgba(251, 191, 36, 0.12);
+  --ab-orange-fill: rgba(251, 191, 36, 0.08);
+  --ab-red: #F87171;
+  --ab-red-dim: rgba(248, 113, 113, 0.12);
+  --ab-purple: #A78BFA;
+
+  --ab-text: #E8F5E8;
+  --ab-text-dim: #A8CFA8;
+  --ab-text-muted: #5A7A5A;
+
+  --ab-gradient-accent: linear-gradient(135deg, #4ADE80, #22C55E);
+  --ab-tab-active: #4ADE80;
+  --ab-tab-active-text: #0A1A0A;
+}
+
+/* ---------- Global ---------- */
+body {
+  background: var(--ab-bg-deep) !important;
+  color: var(--ab-text) !important;
+  font-family: 'Space Mono', monospace !important;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  transition: background 0.3s, color 0.3s;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(circle, var(--ab-dot-grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ---------- Animations ---------- */
+@keyframes ab-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes ab-slide-up {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes ab-dot-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+
+/* ---------- Utility Classes ---------- */
+.ab-mono { font-family: 'Space Mono', monospace; letter-spacing: 0.04em; }
+.ab-heading { font-family: 'Outfit', sans-serif; font-weight: 700; }
+.ab-display { font-family: 'Orbitron', sans-serif; font-weight: 800; letter-spacing: 0.05em; }
+
+/* ---------- Scrollbar ---------- */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--ab-green-dim); border-radius: 2px; }
+::selection { background: var(--ab-green); color: #fff; }
+
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-    }
-  body {
-    @apply bg-background text-foreground;
-    }
-  html {
-    @apply font-sans;
-    }
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground; }
+  html { @apply font-sans; }
 }

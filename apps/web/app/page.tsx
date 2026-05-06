@@ -1,8 +1,13 @@
-import { prisma } from "@repo/db"
+import LeftSidebar from "@/components/layouts/LeftSidebar"
+import RightSidebar from "@/components/layouts/RightSidebar"
+import MainArena from "@/components/layouts/MainArena"
 
-export default async function Home() {
-  const users = await prisma.user.findMany();
-  console.log({ users });
-
-  return <div>Home page is in app/page.tsx</div>
+export default function Home() {
+  return (
+    <div className="flex h-screen w-screen overflow-hidden" style={{ background: "var(--ab-bg-deep)" }}>
+      <LeftSidebar />
+      <MainArena />
+      <RightSidebar />
+    </div>
+  )
 }

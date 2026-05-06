@@ -27,6 +27,8 @@ export default function RootLayout({
         geist.variable
       )}
     >
+      <head>
+      </head>
       <body>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
