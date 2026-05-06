@@ -1,13 +1,14 @@
 {
   "name": "@repo/db",
   "version": "0.0.0",
-  "type": "module", 
+  "type": "module",
   "scripts": {
-    "db:generate": "prisma generate", 
-    "db:migrate": "prisma migrate dev", 
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy"
   },
   "devDependencies": {
+    "@types/node": "^25.6.0",
     "prisma": "^7.8.0"
   },
   "dependencies": {
