@@ -1,13 +1,14 @@
-import LeftSidebar from "@/components/layouts/LeftSidebar"
-import RightSidebar from "@/components/layouts/RightSidebar"
-import MainArena from "@/components/layouts/MainArena"
+import LeftSidebar from "@/components/layouts/LeftSidebar";
+import { RightSidebar } from "@/components/layouts/RightSidebar";
 
 export default function Home() {
   return (
-    <div className="flex h-screen w-screen overflow-hidden" style={{ background: "var(--ab-bg-deep)" }}>
+    <div className="flex h-full w-full overflow-hidden">
       <LeftSidebar />
-      <MainArena />
+
+      <main className="relative flex-1">{/* <Game /> */}</main>
+
       <RightSidebar />
     </div>
-  )
+  );
 }

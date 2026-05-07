@@ -1,6 +1,6 @@
-import { betterAuth } from "better-auth"
+import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
-import { prismaAdapter } from "better-auth/adapters/prisma"
+import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "@repo/db";
 
 export const auth = betterAuth({
@@ -13,9 +13,9 @@ export const auth = betterAuth({
       walletAddress: {
         type: "string",
         required: false,
-        input: true,  // unsure here if user should not be allowed to change wallet_address
-      }
-    }
+        input: true, // unsure here if user should not be allowed to change wallet_address
+      },
+    },
   },
 
   emailAndPassword: {
@@ -35,5 +35,5 @@ export const auth = betterAuth({
 
   experimental: { joins: true },
 
-  plugins: [nextCookies()] // make sure this is the last plugin in the array
-})
+  plugins: [nextCookies()], // make sure this is the last plugin in the array
+});
