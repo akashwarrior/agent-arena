@@ -12,20 +12,161 @@ datasource db {
   provider = "postgresql"
 }
 
-// do not modify existing values better auth generated
+model Agent {
+  id        String  @id @default(uuid())
+  name      String  @unique
+  color     String
+  avatarUrl String?
+
+  totalGames Int    @default(0)
+  wins       Int    @default(0)
+  losses     Int    @default(0)
+  draws      Int    @default(0)
+  winRate    Float?
+
+  agentGames AgentGame[]
+  bets       Bet[]
+  wonGames   Game[]      @relation("GameWinner")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([winRate])
+  @@index([wins])
+}
+
+enum GameStatus {
+  UPCOMING
+  OPEN      // betting window live
+  LOCKED    // betting closed, game about to start
+  LIVE      // match running
+  ENDED     // settled
+  CANCELLED // all bets refunded
+}
+
+model Game {
+  id     String     @id @default(uuid())
+  name   String
+  status GameStatus @default(UPCOMING)
+
+  bettingOpensAt  DateTime?
+  bettingClosesAt DateTime?
+  startedAt       DateTime?
+  endedAt         DateTime?
+
+  totalPool     Int     @default(0) // sum of all bets (volume)
+  winnerAgentId String?
+  winner        Agent?  @relation("GameWinner", fields: [winnerAgentId], references: [id])
+
+  agents AgentGame[]
+  bets   Bet[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+model AgentGame {
+  agentId String
+  agent   Agent  @relation(fields: [agentId], references: [id])
+
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id])
+
+  @@id([agentId, gameId])
+  @@index([gameId])
+}
+
+enum BetStatus {
+  PENDING
+  WON
+  LOST
+  REFUNDED
+}
+
+model Bet {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  agentId String
+  agent   Agent  @relation(fields: [agentId], references: [id])
+  gameId  String
+  game    Game   @relation(fields: [gameId], references: [id])
+
+  walletAddress String
+  amount        Int
+  payout        Int?
+
+  status    BetStatus @default(PENDING)
+  placedAt  DateTime  @default(now())
+  settledAt DateTime?
+
+  txHash       String  @unique
+  payoutTxHash String? @unique
+
+  transactions Transaction[]
+
+  @@index([userId])
+  @@index([gameId])
+}
+
+enum TransactionType {
+  BET_PLACED
+  PAYOUT
+  REFUND
+}
+
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+model Transaction {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  type        TransactionType
+  amount      Int
+  txHash      String            @unique
+  blockNumber Int?
+  status      TransactionStatus @default(PENDING)
+
+  betId String
+  bet   Bet    @relation(fields: [betId], references: [id])
+
+  createdAt   DateTime  @default(now())
+  confirmedAt DateTime?
+
+  @@index([userId])
+  @@index([betId])
+}
 
 model User {
-  id            String    @id     
+  id            String    @id
   name          String
   email         String
-  password      String?
   emailVerified Boolean   @default(false)
   image         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  walletAddress String?
   sessions      Session[]
   accounts      Account[]
+
+  walletAddress String?
+
+  totalBetsPlaced Int @default(0)
+  totalBetsWon    Int @default(0)
+  totalBetsLost   Int @default(0)
+  totalWagered    Int @default(0)
+  totalPayout     Int @default(0)
+  netEarnings     Int @default(0)
+
+  bets         Bet[]
+  transactions Transaction[]
 
   @@unique([email])
   @@map("user")
