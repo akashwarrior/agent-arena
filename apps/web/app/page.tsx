@@ -10,8 +10,7 @@ export default async function HomePage() {
   });
 
   if (!session?.user) {
-    return <Landing />;
-    // return <Landing2/>
+    return <Landing2 />;
   }
 
   return <Home />;
