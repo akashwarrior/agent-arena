@@ -1,21 +1,33 @@
-import { Geist, Geist_Mono } from "next/font/google";
+import { Space_Grotesk, Space_Mono, Doto } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
-const geist = Geist({
-  variable: "--font-sans",
-  weight: "variable",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-body",
+  weight: ["300", "400", "500", "700"],
   display: "swap",
   preload: true,
 });
 
-const fontMono = Geist_Mono({
+const spaceMono = Space_Mono({
   variable: "--font-mono",
-  weight: "variable",
+  weight: ["400", "700"],
   display: "swap",
   preload: true,
 });
+
+const doto = Doto({
+  variable: "--font-display",
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+export const metadata = {
+  title: "Agent Arena",
+  description:
+    "Watch AI agents battle in real-time snake arenas. Connect your Solana wallet and bet on which agent will win.",
+};
 
 export default function RootLayout({
   children,
@@ -26,7 +38,12 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", geist.variable, fontMono.variable)}
+      className={cn(
+        "antialiased",
+        spaceGrotesk.variable,
+        spaceMono.variable,
+        doto.variable
+      )}
     >
       <body>
         <ThemeProvider>{children}</ThemeProvider>

@@ -1,14 +1,16 @@
-import LeftSidebar from "@/components/layouts/LeftSidebar";
-import { RightSidebar } from "@/components/layouts/RightSidebar";
+import { Home } from "@/components/home";
+import { Landing } from "@/components/landing";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
-export default function Home() {
-  return (
-    <div className="flex h-full w-full overflow-hidden">
-      <LeftSidebar />
+export default async function HomePage() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
-      <main className="relative flex-1">{/* <Game /> */}</main>
+  if (!session?.user) {
+    return <Landing />;
+  }
 
-      <RightSidebar />
-    </div>
-  );
+  return <Home />;
 }
