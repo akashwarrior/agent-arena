@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Bet, Game } from "@repo/db";
 
 function statusBadge(status: Game["status"]) {
@@ -25,16 +26,17 @@ function statusBadge(status: Game["status"]) {
       return (
         <Badge
           variant="outline"
-          className="border-nd-success/30 font-mono text-[9px] text-nd-success"
+          className="border-green-500/50 bg-green-500/10 font-mono text-[10px] text-green-400 font-bold"
         >
-          ● LIVE
+          <span className="mr-1.5 size-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
+          LIVE
         </Badge>
       );
     case "UPCOMING":
       return (
         <Badge
           variant="outline"
-          className="border-nd-border-visible font-mono text-[9px] text-nd-text-secondary"
+          className="border-[#F59E0B]/50 bg-[#F59E0B]/10 font-mono text-[10px] text-[#F59E0B] font-bold"
         >
           OPEN
         </Badge>
@@ -43,7 +45,7 @@ function statusBadge(status: Game["status"]) {
       return (
         <Badge
           variant="outline"
-          className="border-nd-border font-mono text-[9px] text-nd-text-disabled"
+          className="border-gray-700 font-mono text-[10px] text-gray-500 font-bold"
         >
           ENDED
         </Badge>
@@ -54,11 +56,11 @@ function statusBadge(status: Game["status"]) {
 function betStatusColor(status: Bet["status"]) {
   switch (status) {
     case "PENDING":
-      return "text-nd-text-primary";
+      return "text-white";
     case "WON":
-      return "text-nd-success";
+      return "text-green-400";
     case "LOST":
-      return "text-nd-accent";
+      return "text-red-400";
   }
 }
 
@@ -70,8 +72,8 @@ function GamesList({
   bets: Bet[];
 }) {
   return (
-    <div className="flex flex-col gap-nd-xs">
-      <span className="font-mono text-[11px] tracking-[0.08em] text-nd-text-secondary uppercase">
+    <div className="flex flex-col gap-3">
+      <span className="font-mono text-[11px] font-bold tracking-widest text-[#8B5CF6] uppercase">
         ALL GAMES
       </span>
       {MOCK_GAMES.map((game) => {
@@ -81,24 +83,24 @@ function GamesList({
             key={game.id}
             type="button"
             onClick={() => onSelectGame(game)}
-            className="flex w-full items-center justify-between rounded-lg border border-nd-border px-nd-sm py-nd-sm text-left transition-colors hover:border-nd-border-visible hover:bg-nd-surface-raised"
+            className="flex w-full items-center justify-between rounded-xl border border-white/5 bg-black/40 px-3 py-3 text-left transition-all hover:border-[#8B5CF6]/40 hover:bg-white/5 hover:shadow-[0_0_15px_rgba(139,92,246,0.15)]"
           >
-            <div className="flex flex-col gap-nd-2xs">
-              <div className="flex items-center gap-nd-sm">
-                <span className="font-body text-sm text-nd-text-primary">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <span className="font-sans font-bold text-sm text-gray-200">
                   {game.name}
                 </span>
                 {hasBet && (
-                  <span className="inline-block size-1.5 rounded-full bg-nd-success" />
+                  <span className="inline-block size-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
                 )}
               </div>
-              <span className="font-mono text-[10px] text-nd-text-disabled tabular-nums">
+              <span className="font-mono text-[10px] text-gray-500 tabular-nums">
                 {game.totalPool.toFixed(1)} SOL · R{game.id}
               </span>
             </div>
-            <div className="flex items-center gap-nd-sm">
+            <div className="flex items-center gap-2">
               {statusBadge(game.status)}
-              <ChevronRight className="size-3.5 text-nd-text-disabled" />
+              <ChevronRight className="size-4 text-gray-600" />
             </div>
           </button>
         );
@@ -138,66 +140,66 @@ function GameDetail({
 
   return (
     <>
-      <div className="flex flex-col gap-nd-md">
+      <div className="flex flex-col gap-4">
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-nd-xs text-nd-text-secondary transition-colors hover:text-nd-text-primary"
+          className="flex items-center gap-2 text-gray-400 transition-colors hover:text-white"
         >
-          <ArrowLeft className="size-3.5" />
-          <span className="font-mono text-[10px] tracking-[0.06em] uppercase">
+          <ArrowLeft className="size-4" />
+          <span className="font-mono text-[10px] font-bold tracking-widest uppercase">
             ALL GAMES
           </span>
         </button>
 
         <div className="flex items-center justify-between">
-          <span className="font-body text-lg font-medium text-nd-text-display">
+          <span className="font-sans text-xl font-bold text-white tracking-tight">
             {game.name}
           </span>
           {statusBadge(game.status)}
         </div>
 
-        <div className="flex items-center gap-nd-md">
+        <div className="flex items-center gap-4 bg-white/5 rounded-xl border border-white/5 p-3">
           <div className="flex flex-col">
-            <span className="font-mono text-[10px] tracking-[0.08em] text-nd-text-disabled uppercase">
+            <span className="font-mono text-[10px] font-bold tracking-widest text-gray-500 uppercase">
               POOL
             </span>
-            <span className="font-mono text-sm font-bold text-nd-text-display tabular-nums">
+            <span className="font-mono text-sm font-bold text-[#8B5CF6] tabular-nums drop-shadow-[0_0_8px_rgba(139,92,246,0.5)]">
               {game.totalPool.toFixed(1)} SOL
             </span>
           </div>
-          <Separator orientation="vertical" className="h-8 bg-nd-border" />
+          <Separator orientation="vertical" className="h-8 bg-white/10" />
           <div className="flex flex-col">
-            <span className="font-mono text-[10px] tracking-[0.08em] text-nd-text-disabled uppercase">
+            <span className="font-mono text-[10px] font-bold tracking-widest text-gray-500 uppercase">
               ROUND
             </span>
-            <span className="font-mono text-sm text-nd-text-primary tabular-nums">
+            <span className="font-mono text-sm text-gray-200 tabular-nums">
               {game.id}
             </span>
           </div>
-          <Separator orientation="vertical" className="h-8 bg-nd-border" />
+          <Separator orientation="vertical" className="h-8 bg-white/10" />
           <div className="flex flex-col">
-            <span className="font-mono text-[10px] tracking-[0.08em] text-nd-text-disabled uppercase">
+            <span className="font-mono text-[10px] font-bold tracking-widest text-gray-500 uppercase">
               AGENTS
             </span>
-            <span className="font-mono text-sm text-nd-text-primary tabular-nums">
+            <span className="font-mono text-sm text-gray-200 tabular-nums">
               {game?.agents.length}
             </span>
           </div>
         </div>
 
         {isLive && (
-          <div className="flex items-center gap-nd-sm rounded-lg border border-nd-border-visible bg-nd-surface-raised px-nd-sm py-nd-sm">
-            <Lock className="size-3.5 text-nd-text-disabled" />
-            <span className="font-mono text-[10px] tracking-[0.06em] text-nd-text-secondary uppercase">
+          <div className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-3">
+            <Lock className="size-4 text-red-400" />
+            <span className="font-mono text-[10px] tracking-widest text-red-400 uppercase">
               BETTING CLOSED — MATCH IS LIVE
             </span>
           </div>
         )}
 
         {existingBet && (
-          <div className="rounded-lg border border-nd-success/20 bg-nd-success/5 px-nd-sm py-nd-sm">
-            <span className="font-mono text-[10px] tracking-[0.06em] text-nd-success uppercase">
+          <div className="rounded-xl border border-green-500/20 bg-green-500/5 px-3 py-3 shadow-[inset_0_0_20px_rgba(34,197,94,0.05)]">
+            <span className="font-mono text-[10px] tracking-widest text-green-400 uppercase">
               YOU BET {existingBet.amount.toFixed(2)} SOL ON{" "}
               {existingBet.agentId.toUpperCase()}
             </span>
@@ -205,19 +207,19 @@ function GameDetail({
         )}
 
         {game.status === "ENDED" && game.winnerAgentId && (
-          <div className="rounded-lg border border-nd-border bg-nd-surface-raised px-nd-sm py-nd-sm">
-            <span className="font-mono text-[10px] tracking-[0.08em] text-nd-text-disabled uppercase">
+          <div className="rounded-xl border border-[#F59E0B]/30 bg-[#F59E0B]/10 px-3 py-3 shadow-[0_0_20px_rgba(245,158,11,0.1)]">
+            <span className="font-mono text-[10px] tracking-widest text-[#F59E0B] uppercase">
               WINNER:{" "}
-              <span className="text-nd-text-display">
+              <span className="font-bold text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]">
                 {game.winnerAgentId.toUpperCase()}
               </span>
             </span>
           </div>
         )}
 
-        <Separator className="bg-nd-border" />
+        <Separator className="bg-white/10 my-1" />
 
-        <span className="font-mono text-[11px] tracking-[0.08em] text-nd-text-secondary uppercase">
+        <span className="font-mono text-[11px] font-bold tracking-widest text-[#8B5CF6] uppercase">
           {canBet ? "TAP AN AGENT TO BET" : "AGENTS"}
         </span>
 
@@ -234,24 +236,24 @@ function GameDetail({
                   setSelectedAgent(isSelected ? null : a.id);
                   setBetAmount("");
                 }}
-                className={`flex w-full items-center justify-between rounded-lg border px-nd-sm py-nd-sm text-left transition-colors ${
+                className={`flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left transition-all ${
                   isSelected
-                    ? "border-nd-text-display bg-nd-surface-raised"
+                    ? "border-[#3B82F6] bg-[#3B82F6]/10 shadow-[0_0_20px_rgba(59,130,246,0.15)]"
                     : isBetAgent
-                      ? "border-nd-success/30 bg-nd-success/5"
-                      : "border-nd-border hover:border-nd-border-visible"
+                      ? "border-green-500/30 bg-green-500/10 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
+                      : "border-white/5 hover:border-white/20 bg-black/40"
                 } ${!canBet ? "cursor-default" : ""}`}
               >
-                <div className="flex items-center gap-nd-sm">
+                <div className="flex items-center gap-3">
                   <span
-                    className="inline-block size-2.5 rounded-full"
-                    style={{ backgroundColor: a.color }}
+                    className="inline-block size-3 rounded-full shadow-[0_0_10px_currentColor]"
+                    style={{ backgroundColor: a.color, color: a.color }}
                   />
                   <span
-                    className={`font-body text-sm ${
+                    className={`font-sans font-bold text-sm ${
                       a.alive
-                        ? "text-nd-text-primary"
-                        : "text-nd-text-disabled line-through"
+                        ? "text-gray-200"
+                        : "text-gray-600 line-through"
                     }`}
                   >
                     {a.name}
@@ -259,7 +261,7 @@ function GameDetail({
                   {game.winnerAgentId === a.id && (
                     <Badge
                       variant="outline"
-                      className="border-nd-text-display/20 font-mono text-[8px] text-nd-text-display"
+                      className="border-[#F59E0B]/30 font-mono text-[8px] text-[#F59E0B]"
                     >
                       WINNER
                     </Badge>
@@ -267,39 +269,39 @@ function GameDetail({
                   {isBetAgent && (
                     <Badge
                       variant="outline"
-                      className="border-nd-success/30 font-mono text-[8px] text-nd-success"
+                      className="border-green-500/30 font-mono text-[8px] text-green-400"
                     >
                       YOUR BET
                     </Badge>
                   )}
                 </div>
                 {game.status !== "UPCOMING" && (
-                  <span className="font-mono text-xs text-nd-text-secondary tabular-nums">
+                  <span className="font-mono text-xs text-gray-500 tabular-nums">
                     {a.score}
                   </span>
                 )}
               </button>
 
               {canBet && isSelected && (
-                <div className="mt-nd-xs flex items-center gap-nd-xs rounded-lg border border-nd-text-display/20 bg-nd-surface-raised px-nd-sm py-nd-sm">
+                <div className="mt-2 flex items-center gap-2 rounded-xl border border-[#3B82F6]/30 bg-[#3B82F6]/5 p-2">
                   <Input
                     id={`bet-${a.id}`}
                     type="number"
                     placeholder="0.00"
                     autoFocus
-                    className="h-9 flex-1 border-nd-border-visible bg-nd-surface font-mono text-sm text-nd-text-primary placeholder:text-nd-text-disabled"
+                    className="h-10 flex-1 border-white/10 bg-black/60 font-mono text-sm text-white placeholder:text-gray-600 focus-visible:ring-[#3B82F6]"
                     value={betAmount}
                     onChange={(e) => setBetAmount(e.target.value)}
                     min="0"
                     step="0.01"
                   />
-                  <span className="font-mono text-[10px] text-nd-text-disabled">
+                  <span className="font-mono text-[10px] text-gray-500">
                     SOL
                   </span>
                   <Button
                     id={`confirm-bet-${a.id}`}
                     disabled={!betAmount || parseFloat(betAmount) <= 0}
-                    className="h-9 rounded-full bg-nd-text-display px-nd-md font-mono text-xs tracking-[0.06em] text-nd-black uppercase hover:bg-nd-text-primary disabled:opacity-30"
+                    className="h-10 rounded-lg bg-gradient-to-r from-[#8B5CF6] to-[#3B82F6] px-6 font-mono text-xs font-bold tracking-widest text-white uppercase hover:opacity-90 disabled:opacity-30 border-0"
                     onClick={() => setConfirmOpen(true)}
                   >
                     BET
@@ -312,52 +314,52 @@ function GameDetail({
       </div>
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent className="max-w-sm border-nd-border-visible bg-nd-surface">
+        <DialogContent className="max-w-sm border-white/10 bg-[#04050A] backdrop-blur-xl shadow-[0_0_50px_rgba(139,92,246,0.15)]">
           <DialogHeader>
-            <DialogTitle className="font-body text-lg text-nd-text-display">
+            <DialogTitle className="font-sans font-black text-xl text-white uppercase tracking-tight">
               Confirm Bet
             </DialogTitle>
-            <DialogDescription className="font-mono text-xs tracking-[0.04em] text-nd-text-secondary">
+            <DialogDescription className="font-mono text-xs text-gray-400">
               Placing bet on {agent?.name} in {game.name}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-nd-sm pt-nd-xs">
-            <div className="flex items-center justify-between py-nd-xs">
-              <span className="font-mono text-[11px] tracking-[0.08em] text-nd-text-secondary uppercase">
+          <div className="flex flex-col gap-3 pt-2">
+            <div className="flex items-center justify-between py-2">
+              <span className="font-mono text-[11px] tracking-widest text-gray-500 uppercase">
                 AGENT
               </span>
-              <span className="font-body text-sm text-nd-text-primary">
+              <span className="font-sans font-bold text-sm text-white">
                 {agent?.name}
               </span>
             </div>
-            <Separator className="bg-nd-border" />
-            <div className="flex items-center justify-between py-nd-xs">
-              <span className="font-mono text-[11px] tracking-[0.08em] text-nd-text-secondary uppercase">
+            <Separator className="bg-white/10" />
+            <div className="flex items-center justify-between py-2">
+              <span className="font-mono text-[11px] tracking-widest text-gray-500 uppercase">
                 AMOUNT
               </span>
-              <span className="font-mono text-sm font-bold text-nd-text-display tabular-nums">
+              <span className="font-mono text-lg font-bold text-[#8B5CF6] tabular-nums drop-shadow-[0_0_8px_rgba(139,92,246,0.5)]">
                 {betAmount} SOL
               </span>
             </div>
-            <Separator className="bg-nd-border" />
-            <div className="flex items-center justify-between py-nd-xs">
-              <span className="font-mono text-[11px] tracking-[0.08em] text-nd-text-secondary uppercase">
+            <Separator className="bg-white/10" />
+            <div className="flex items-center justify-between py-2">
+              <span className="font-mono text-[11px] tracking-widest text-gray-500 uppercase">
                 PAYOUT
               </span>
-              <span className="font-mono text-[10px] text-nd-text-disabled">
+              <span className="font-mono text-[10px] text-[#3B82F6] font-bold">
                 WINNER TAKES ALL
               </span>
             </div>
-            <div className="flex gap-nd-sm pt-nd-sm">
+            <div className="flex gap-3 pt-4">
               <Button
                 variant="outline"
-                className="flex-1 rounded-full border-nd-border-visible font-mono text-xs tracking-[0.06em] text-nd-text-secondary uppercase"
+                className="flex-1 rounded-xl border-white/10 bg-transparent font-mono text-xs font-bold tracking-widest text-gray-400 uppercase hover:bg-white/5 hover:text-white"
                 onClick={() => setConfirmOpen(false)}
               >
                 CANCEL
               </Button>
               <Button
-                className="flex-1 rounded-full bg-nd-text-display font-mono text-xs tracking-[0.06em] text-nd-black uppercase hover:bg-nd-text-primary"
+                className="flex-1 rounded-xl bg-gradient-to-r from-[#8B5CF6] to-[#3B82F6] font-mono text-xs font-bold tracking-widest text-white uppercase hover:opacity-90 border-0"
                 onClick={handleConfirmBet}
               >
                 CONFIRM
@@ -373,52 +375,52 @@ function GameDetail({
 function MyBetsView({ bets }: { bets: Bet[] }) {
   return (
     <div className="flex flex-col">
-      <span className="mb-nd-sm font-mono text-[11px] tracking-[0.08em] text-nd-text-secondary uppercase">
+      <span className="mb-4 font-mono text-[11px] font-bold tracking-widest text-[#8B5CF6] uppercase">
         BET HISTORY
       </span>
 
       {bets.length === 0 ? (
-        <div className="py-nd-3xl text-center">
-          <p className="font-mono text-sm text-nd-text-secondary">
+        <div className="py-16 text-center">
+          <p className="font-mono text-sm text-gray-400">
             [NO BETS PLACED]
           </p>
-          <p className="mt-nd-xs font-mono text-[10px] text-nd-text-disabled">
+          <p className="mt-2 font-mono text-[10px] text-gray-600">
             Select a game and pick an agent to bet
           </p>
         </div>
       ) : (
         <>
-          <div className="flex flex-col gap-nd-xs">
+          <div className="flex flex-col gap-2">
             {bets.map((bet) => (
               <div
                 key={bet.id}
-                className="flex items-center justify-between border-b border-nd-border py-nd-sm last:border-b-0"
+                className="flex items-center justify-between border border-white/5 bg-black/40 rounded-xl p-3"
               >
-                <div className="flex flex-col gap-nd-2xs">
-                  <span className="font-body text-sm text-nd-text-primary">
-                    {bet.agentId}
+                <div className="flex flex-col gap-1">
+                  <span className="font-sans font-bold text-sm text-gray-200">
+                    {bet.agentId.toUpperCase()}
                   </span>
-                  <span className="font-mono text-[10px] tracking-[0.08em] text-nd-text-disabled uppercase">
+                  <span className="font-mono text-[10px] tracking-widest text-gray-500 uppercase">
                     {bet.gameId}
                   </span>
                 </div>
-                <div className="flex flex-col items-end gap-nd-2xs">
-                  <span className="font-mono text-sm text-nd-text-primary tabular-nums">
+                <div className="flex flex-col items-end gap-1">
+                  <span className="font-mono text-sm font-bold text-white tabular-nums">
                     {bet.amount.toFixed(2)} SOL
                   </span>
-                  <div className="flex items-center gap-nd-xs">
+                  <div className="flex items-center gap-2">
                     {bet.status === "WON" && (
-                      <span className="font-mono text-[10px] text-nd-success tabular-nums">
+                      <span className="font-mono text-[10px] font-bold text-green-400 tabular-nums">
                         +{((bet.payout || 0) - bet.amount).toFixed(2)}
                       </span>
                     )}
                     {bet.status === "LOST" && (
-                      <span className="font-mono text-[10px] text-nd-accent tabular-nums">
+                      <span className="font-mono text-[10px] font-bold text-red-400 tabular-nums">
                         -{bet.amount.toFixed(2)}
                       </span>
                     )}
                     <span
-                      className={`font-mono text-[10px] tracking-[0.08em] uppercase ${betStatusColor(bet.status)}`}
+                      className={`font-mono text-[10px] font-bold tracking-widest uppercase ${betStatusColor(bet.status)}`}
                     >
                       {bet.status === "PENDING" && "● "}
                       {bet.status.toUpperCase()}
@@ -429,18 +431,18 @@ function MyBetsView({ bets }: { bets: Bet[] }) {
             ))}
           </div>
 
-          <Separator className="my-nd-sm bg-nd-border" />
-          <div className="flex flex-col gap-nd-xs">
+          <Separator className="my-6 bg-white/10" />
+          <div className="flex flex-col gap-3 rounded-xl border border-white/5 bg-black/60 p-4">
             <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] tracking-[0.08em] text-nd-text-disabled uppercase">
+              <span className="font-mono text-[10px] font-bold tracking-widest text-gray-500 uppercase">
                 TOTAL WAGERED
               </span>
-              <span className="font-mono text-xs text-nd-text-secondary tabular-nums">
+              <span className="font-mono text-xs text-gray-300 tabular-nums">
                 {bets.reduce((s, b) => s + b.amount, 0).toFixed(2)} SOL
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] tracking-[0.08em] text-nd-text-disabled uppercase">
+              <span className="font-mono text-[10px] font-bold tracking-widest text-gray-500 uppercase">
                 NET P&L
               </span>
               {(() => {
@@ -451,7 +453,7 @@ function MyBetsView({ bets }: { bets: Bet[] }) {
                 const pnl = totalOut - totalIn;
                 return (
                   <span
-                    className={`font-mono text-xs font-bold tabular-nums ${pnl >= 0 ? "text-nd-success" : "text-nd-accent"}`}
+                    className={`font-mono text-xs font-bold tabular-nums ${pnl >= 0 ? "text-green-400 drop-shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "text-red-400"}`}
                   >
                     {pnl >= 0 ? "+" : ""}
                     {pnl.toFixed(2)} SOL
@@ -499,7 +501,7 @@ export function LeftSidebarContent({ tab }: { tab: "games" | "bets" }) {
 
   return (
     <ScrollArea className="h-full">
-      <div className="p-nd-md">
+      <div className="p-4">
         {tab === "games" ? (
           selectedGame ? (
             <GameDetail
@@ -519,51 +521,49 @@ export function LeftSidebarContent({ tab }: { tab: "games" | "bets" }) {
   );
 }
 
-export function LeftSidebar() {
-  const [tab, setTab] = useState<"games" | "bets">("games");
-
+export function LeftSidebar({ isCollapsed, onToggle }: { isCollapsed?: boolean, onToggle?: () => void }) {
   return (
-    <aside className="flex h-full w-[340px] flex-col border-r border-nd-border bg-nd-surface">
-      <div className="flex border-b border-nd-border">
-        <button
-          type="button"
-          onClick={() => setTab("games")}
-          className={`flex-1 py-nd-sm font-mono text-[11px] tracking-[0.08em] uppercase transition-colors ${
-            tab === "games"
-              ? "border-b-2 border-nd-text-display text-nd-text-display"
-              : "text-nd-text-disabled hover:text-nd-text-secondary"
-          }`}
-        >
-          GAMES
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("bets")}
-          className={`flex-1 py-nd-sm font-mono text-[11px] tracking-[0.08em] uppercase transition-colors ${
-            tab === "bets"
-              ? "border-b-2 border-nd-text-display text-nd-text-display"
-              : "text-nd-text-disabled hover:text-nd-text-secondary"
-          }`}
-        >
-          MY BETS
-        </button>
-      </div>
+    <div className={`relative h-full transition-all duration-300 ease-in-out ${isCollapsed ? "w-0 overflow-hidden" : "w-72"}`}>
+      <aside className="flex h-full w-72 flex-col border-r border-[#8B5CF6]/30 bg-[#04050A]/90 backdrop-blur-xl shadow-[5px_0_30px_rgba(139,92,246,0.1)]">
+        <div className="flex border-b border-white/10 pt-2 px-2 bg-black/20">
+          <Tabs defaultValue="games" className="w-full">
+            <TabsList className="w-full bg-transparent p-0 gap-4 h-10 border-b-0 rounded-none justify-start">
+              <TabsTrigger 
+                value="games" 
+                className="px-2 pb-2 rounded-none font-mono text-[11px] font-bold tracking-widest uppercase data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[#8B5CF6] text-gray-500 hover:text-gray-300"
+              >
+                GAMES
+              </TabsTrigger>
+              <TabsTrigger 
+                value="bets" 
+                className="px-2 pb-2 rounded-none font-mono text-[11px] font-bold tracking-widest uppercase data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[#8B5CF6] text-gray-500 hover:text-gray-300"
+              >
+                MY BETS
+              </TabsTrigger>
+            </TabsList>
+            <div className="mt-2 min-h-0 flex-1 absolute top-14 bottom-12 left-0 right-0">
+              <TabsContent value="games" className="h-full m-0 data-[state=inactive]:hidden">
+                <LeftSidebarContent tab="games" />
+              </TabsContent>
+              <TabsContent value="bets" className="h-full m-0 data-[state=inactive]:hidden">
+                <LeftSidebarContent tab="bets" />
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
 
-      <div className="min-h-0 flex-1">
-        <LeftSidebarContent tab={tab} />
-      </div>
-
-      <div className="flex items-center justify-between border-t border-nd-border px-nd-md py-nd-sm">
-        <div className="flex items-center gap-nd-xs">
-          <Zap className="size-3 text-nd-text-disabled" />
-          <span className="font-mono text-[10px] tracking-[0.08em] text-nd-text-disabled uppercase">
-            SOLANA
+        <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between border-t border-white/10 px-4 py-3 bg-black/40 backdrop-blur-md">
+          <div className="flex items-center gap-2">
+            <Zap className="size-3 text-[#3B82F6] animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
+            <span className="font-mono text-[10px] font-bold tracking-widest text-[#3B82F6] uppercase drop-shadow-[0_0_5px_rgba(59,130,246,0.5)]">
+              SOLANA MAINNET
+            </span>
+          </div>
+          <span className="font-mono text-[10px] text-gray-500">
+            v1.0.0
           </span>
         </div>
-        <span className="font-mono text-[10px] text-nd-text-disabled">
-          v0.1.0
-        </span>
-      </div>
-    </aside>
+      </aside>
+    </div>
   );
 }
