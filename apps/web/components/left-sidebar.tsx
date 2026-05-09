@@ -1,15 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useAtom } from "jotai";
-import { selectedGameAtom, betsAtom } from "@/lib/store";
+import { useAtom, useAtomValue } from "jotai";
+import { selectedGameAtom, betsAtom, leftSidebarOpenAtom } from "@/lib/store";
 import { MOCK_GAMES } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Zap, Lock, ChevronRight, ArrowLeft } from "lucide-react";
+import { Zap, Lock, ChevronRight, ArrowLeft, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -236,13 +236,12 @@ function GameDetail({
                   setSelectedAgent(isSelected ? null : a.id);
                   setBetAmount("");
                 }}
-                className={`flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left transition-all ${
-                  isSelected
+                className={`flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left transition-all ${isSelected
                     ? "border-[#3B82F6] bg-[#3B82F6]/10 shadow-[0_0_20px_rgba(59,130,246,0.15)]"
                     : isBetAgent
                       ? "border-green-500/30 bg-green-500/10 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
                       : "border-white/5 hover:border-white/20 bg-black/40"
-                } ${!canBet ? "cursor-default" : ""}`}
+                  } ${!canBet ? "cursor-default" : ""}`}
               >
                 <div className="flex items-center gap-3">
                   <span
@@ -250,11 +249,10 @@ function GameDetail({
                     style={{ backgroundColor: a.color, color: a.color }}
                   />
                   <span
-                    className={`font-sans font-bold text-sm ${
-                      a.alive
+                    className={`font-sans font-bold text-sm ${a.alive
                         ? "text-gray-200"
                         : "text-gray-600 line-through"
-                    }`}
+                      }`}
                   >
                     {a.name}
                   </span>
@@ -521,21 +519,22 @@ export function LeftSidebarContent({ tab }: { tab: "games" | "bets" }) {
   );
 }
 
-export function LeftSidebar({ isCollapsed, onToggle }: { isCollapsed?: boolean, onToggle?: () => void }) {
+export function LeftSidebar() {
+  const isSidebarOpen = useAtomValue(leftSidebarOpenAtom);
   return (
-    <div className={`relative h-full transition-all duration-300 ease-in-out ${isCollapsed ? "w-0 overflow-hidden" : "w-72"}`}>
+    <div className={`relative h-full transition-all duration-300 ease-in-out ${!isSidebarOpen ? "w-0 overflow-hidden" : "w-72"}`}>
       <aside className="flex h-full w-72 flex-col border-r border-[#8B5CF6]/30 bg-[#04050A]/90 backdrop-blur-xl shadow-[5px_0_30px_rgba(139,92,246,0.1)]">
         <div className="flex border-b border-white/10 pt-2 px-2 bg-black/20">
           <Tabs defaultValue="games" className="w-full">
             <TabsList className="w-full bg-transparent p-0 gap-4 h-10 border-b-0 rounded-none justify-start">
-              <TabsTrigger 
-                value="games" 
+              <TabsTrigger
+                value="games"
                 className="px-2 pb-2 rounded-none font-mono text-[11px] font-bold tracking-widest uppercase data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[#8B5CF6] text-gray-500 hover:text-gray-300"
               >
                 GAMES
               </TabsTrigger>
-              <TabsTrigger 
-                value="bets" 
+              <TabsTrigger
+                value="bets"
                 className="px-2 pb-2 rounded-none font-mono text-[11px] font-bold tracking-widest uppercase data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-[#8B5CF6] text-gray-500 hover:text-gray-300"
               >
                 MY BETS
@@ -566,4 +565,21 @@ export function LeftSidebar({ isCollapsed, onToggle }: { isCollapsed?: boolean, 
       </aside>
     </div>
   );
+}
+
+export function LeftSidebarToggle() {
+  const [isSidebarOpen,setIsSidebarOpen] = useAtom(leftSidebarOpenAtom)
+  
+  return (
+    <button
+      onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+      className="absolute top-6 left-6 z-50 p-2.5 bg-black/80 border border-white/10 rounded-xl hover:bg-white/10 hover:border-[#8B5CF6]/50 backdrop-blur-xl transition-all shadow-[0_0_20px_rgba(139,92,246,0.2)] group"
+    >
+      {isSidebarOpen ? (
+        <PanelLeftClose className="size-6 text-gray-400 group-hover:text-white transition-colors" />
+      ) : (
+        <PanelLeftOpen className="size-6 text-gray-400 group-hover:text-white transition-colors" />
+      )}
+    </button>
+  )
 }

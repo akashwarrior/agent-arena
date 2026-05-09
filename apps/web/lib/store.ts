@@ -7,3 +7,5 @@ export const selectedGameAtom = atom<Game | null>(null);
 export const spectatingAgentAtom = atom<string | null>(null);
 
 export const betsAtom = atom<Bet[]>(MOCK_BETS);
+
+export const leftSidebarOpenAtom = atom(true);
