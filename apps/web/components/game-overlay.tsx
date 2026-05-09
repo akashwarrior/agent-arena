@@ -11,58 +11,52 @@ export function GameOverlay() {
 
   return (
     <>
-      <div className="pointer-events-none absolute bottom-nd-sm left-1/2 z-10 -translate-x-1/2 sm:bottom-nd-md">
-        <div className="pointer-events-auto flex items-center gap-nd-sm rounded-full border border-nd-border-visible bg-nd-black/80 px-3 py-1.5">
-          <span className="font-mono text-[8px] tracking-widest text-nd-text-disabled uppercase sm:text-[9px]">
-            SPECTATING
-          </span>
+      <div className="pointer-events-none absolute bottom-3 left-3 z-10">
+        <div className="pointer-events-auto flex items-center gap-2 bg-card/95 border border-border px-2.5 py-1.5">
+          <span className="text-label text-muted-foreground">SPECTATING</span>
           {currentSnake ? (
             <>
-              <span
-                className="inline-block size-1.5 rounded-full"
-                style={{ backgroundColor: currentSnake.color }}
-              />
-              <span className="font-body text-xs text-nd-text-primary">
+              <div className="size-1.5" style={{ backgroundColor: currentSnake.color }} />
+              <span className="text-caption text-foreground uppercase">
                 {currentSnake.name}
               </span>
+              {spectatingAgent && (
+                <button
+                  type="button"
+                  onClick={() => setSpectatingAgent(null)}
+                  className="text-label text-muted-foreground hover:text-foreground ml-1"
+                >
+                  [RESET]
+                </button>
+              )}
             </>
           ) : (
-            <span className="font-body text-xs text-nd-text-secondary">
-              Auto
+            <span className="text-caption text-foreground uppercase">
+              AUTO
             </span>
-          )}
-          {spectatingAgent && (
-            <button
-              type="button"
-              onClick={() => setSpectatingAgent(null)}
-              className="ml-nd-2xs font-mono text-[8px] tracking-[0.08em] text-nd-text-disabled uppercase transition-colors hover:text-nd-text-primary sm:text-[9px]"
-            >
-              RESET
-            </button>
           )}
         </div>
       </div>
 
-      <div className="absolute right-nd-sm bottom-nd-sm z-10 sm:right-nd-md sm:bottom-nd-md">
-        <div className="flex flex-col gap-nd-2xs rounded-lg border border-nd-border-visible bg-nd-black/80 p-nd-xs">
-          <span className="px-nd-xs font-mono text-[8px] tracking-widest text-nd-text-disabled uppercase">
-            FOLLOW
+      <div className="absolute right-3 bottom-3 z-10">
+        <div className="flex flex-col gap-0.5 bg-card/95 border border-border p-1.5">
+          <span className="text-label text-muted-foreground px-1.5 pb-1">
+            ROSTER
           </span>
           {aliveAgents?.map((agent) => (
             <button
               key={agent.id}
               type="button"
               onClick={() => setSpectatingAgent(agent.id)}
-              className={`flex items-center gap-nd-xs rounded px-nd-xs py-1 text-xs transition-colors ${spectatingAgent === agent.id
-                ? "bg-nd-surface-raised text-nd-text-display"
-                : "text-nd-text-secondary hover:text-nd-text-primary"
+              className={`flex items-center gap-2 px-2 py-1 text-left ${spectatingAgent === agent.id
+                ? "bg-secondary"
+                : "hover:bg-secondary/50"
                 }`}
             >
-              <span
-                className="inline-block size-1.5 rounded-full"
-                style={{ backgroundColor: agent.color }}
-              />
-              <span className="font-mono text-[10px]">{agent.name}</span>
+              <div className="size-1.5" style={{ backgroundColor: agent.color }} />
+              <span className={`text-label ${spectatingAgent === agent.id ? "text-foreground" : "text-muted-foreground"}`}>
+                {agent.name}
+              </span>
             </button>
           ))}
         </div>
