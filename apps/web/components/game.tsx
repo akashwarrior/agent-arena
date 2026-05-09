@@ -2,9 +2,9 @@
 
 import type { ConnectionStatus, GameSnapshot } from "@repo/types";
 import { useEffect, useRef, useState } from "react";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { spectatingAgentAtom, gameSnapshotAtom } from "@/lib/store";
-import { advanceCamera, drawFrame, pickCameraTarget } from "../lib/renderer";
+import { advanceCamera, drawFrame, pickCameraTarget } from "@/lib/renderer";
 
 const MAX_DEVICE_PIXEL_RATIO = 1.5;
 
@@ -13,30 +13,19 @@ const WS_URL = process.env.NEXT_PUBLIC_GAME_WS_URL ?? "ws://localhost:3001";
 export function Game() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const spectatorRef = useRef<string | null>(null);
+  const spectator = useAtomValue(spectatingAgentAtom);
   const setSpectatingAgent = useSetAtom(spectatingAgentAtom);
   const setGameSnapshot = useSetAtom(gameSnapshotAtom);
-  const snapshotRef = useRef<GameSnapshot | null>(null);
   const [, setConnectionStatus] = useState<ConnectionStatus>("connecting");
 
   useEffect(() => {
+    spectatorRef.current = spectator;
+  }, [spectator])
+
+  useEffect(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
+    const ctx = canvas?.getContext("2d", { willReadFrequently: false });
     if (!canvas || !ctx) return;
-
-    const tile = new Image();
-    tile.src = "/images/tile.png";
-
-    const circle = new Image();
-    circle.src = "/images/circle.png";
-
-    const shadow = new Image();
-    shadow.src = "/images/white-shadow.png";
-
-    const eyeWhite = new Image();
-    eyeWhite.src = "/images/eye-white.png";
-
-    const eyeBlack = new Image();
-    eyeBlack.src = "/images/eye-black.png";
 
     let viewport = { width: 0, height: 0, ratio: 0 };
 
@@ -65,23 +54,12 @@ export function Game() {
     const renderLatest = (snapshot: GameSnapshot) => {
       const camera = pickCameraTarget(snapshot, spectatorRef.current);
 
-      if (camera.followingId !== spectatorRef.current) {
-        spectatorRef.current = camera.followingId;
+      if (spectator !== null && camera.followingId !== spectatorRef.current) {
         setSpectatingAgent(camera.followingId);
       }
 
       advanceCamera(camera, viewport, snapshot.world);
-      drawFrame(
-        ctx,
-        viewport,
-        snapshot,
-        camera,
-        tile,
-        circle,
-        shadow,
-        eyeWhite,
-        eyeBlack
-      );
+      drawFrame(ctx, viewport, snapshot, camera);
     };
 
     setConnectionStatus("connecting");
@@ -96,7 +74,6 @@ export function Game() {
     socket.addEventListener("message", (event) => {
       try {
         const game = JSON.parse(event.data) as GameSnapshot;
-        snapshotRef.current = game;
         setGameSnapshot(game);
         animationFrame = window.requestAnimationFrame(() => renderLatest(game));
       } catch {

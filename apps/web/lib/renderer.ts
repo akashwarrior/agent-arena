@@ -14,12 +14,19 @@ export type Camera = {
 
 type Bbox = { x: number; y: number; w: number; h: number };
 
-const SPRITE_SIZE = 60;
-const SHADOW_SIZE = 83;
 const FOOD_RADIUS = 8;
+const FOOD_SIDES = 6;
+const FOOD_ANGLE = (Math.PI * 2) / FOOD_SIDES;
+const TILE_SIZE = 50;
+const GRID_LINE_WIDTH = 2;
+const EYE_WHITE_RATIO = 0.23;
+const EYE_BLACK_RATIO = 0.12;
+const EYE_LATERAL_RATIO = 0.25;
+const EYE_FORWARD_RATIO = 0.125;
+const PUPIL_FORWARD_RATIO = 0.12;
 
 function clamp(v: number, min: number, max: number): number {
-  return Math.min(Math.max(v, min), max);
+  return v < min ? min : v > max ? max : v;
 }
 
 function inBbox(p: Point, margin: number, b: Bbox): boolean {
@@ -34,128 +41,85 @@ function inBbox(p: Point, margin: number, b: Bbox): boolean {
 function drawBackground(
   ctx: CanvasRenderingContext2D,
   world: World,
-  view: Bbox,
-  tile: HTMLImageElement
+  view: Bbox
 ) {
-  const x = Math.max(view.x, 0);
-  const y = Math.max(view.y, 0);
-  const w = Math.min(view.x + view.w, world.WIDTH) - x;
-  const h = Math.min(view.y + view.h, world.HEIGHT) - y;
-  if (w <= 0 || h <= 0) return;
+  const startX = Math.max(Math.floor(view.x / TILE_SIZE) * TILE_SIZE, 0);
+  const startY = Math.max(Math.floor(view.y / TILE_SIZE) * TILE_SIZE, 0);
+  const endX = Math.min(view.x + view.w, world.WIDTH);
+  const endY = Math.min(view.y + view.h, world.HEIGHT);
 
-  ctx.fillStyle = ctx.createPattern(tile, "repeat") || "#444";
-  ctx.fillRect(x, y, w, h);
-}
+  ctx.fillStyle = "#d4d4d4";
+  ctx.fillRect(startX, startY, endX - startX, endY - startY);
 
-function imageReady(image: HTMLImageElement): boolean {
-  return image.complete && image.naturalWidth > 0;
+  ctx.strokeStyle = "#b0b0b0";
+  ctx.lineWidth = GRID_LINE_WIDTH;
+  ctx.beginPath();
+
+  for (let x = startX; x <= endX; x += TILE_SIZE) {
+    ctx.moveTo(x, startY);
+    ctx.lineTo(x, endY);
+  }
+  for (let y = startY; y <= endY; y += TILE_SIZE) {
+    ctx.moveTo(startX, y);
+    ctx.lineTo(endX, y);
+  }
+  ctx.stroke();
 }
 
 function drawFood(ctx: CanvasRenderingContext2D, food: Food[], view: Bbox) {
-  const sides = 6;
-  const angle = (Math.PI * 2) / sides;
-
   ctx.fillStyle = "#ff0000";
+  ctx.beginPath();
   for (const item of food) {
     if (!inBbox(item, FOOD_RADIUS, view)) continue;
-    ctx.beginPath();
-    for (let i = 0; i < sides; i++) {
-      const x = item.x + FOOD_RADIUS * Math.cos(angle * i);
-      const y = item.y + FOOD_RADIUS * Math.sin(angle * i);
+    for (let i = 0; i < FOOD_SIDES; i++) {
+      const x = item.x + FOOD_RADIUS * Math.cos(FOOD_ANGLE * i);
+      const y = item.y + FOOD_RADIUS * Math.sin(FOOD_ANGLE * i);
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
     ctx.closePath();
-    ctx.fill();
   }
-}
-
-function drawShadows(
-  ctx: CanvasRenderingContext2D,
-  snake: Snake,
-  shadow: HTMLImageElement,
-  view: Bbox
-) {
-  if (!imageReady(shadow)) return;
-
-  const scale = snake.size / SPRITE_SIZE;
-  const drawSize = SHADOW_SIZE * scale;
-  const half = drawSize / 2;
-
-  ctx.save();
-  ctx.globalAlpha = 0.72;
-  for (let i = snake.body.length - 1; i >= 0; i--) {
-    const section = snake.body[i]!;
-    if (!inBbox(section, half, view)) continue;
-    ctx.drawImage(
-      shadow,
-      section.x - half,
-      section.y - half,
-      drawSize,
-      drawSize
-    );
-  }
-  ctx.restore();
+  ctx.fill();
 }
 
 function drawSnakeBody(
   ctx: CanvasRenderingContext2D,
   snake: Snake,
-  circle: HTMLImageElement,
   view: Bbox
 ) {
   const half = snake.size / 2;
+
+  ctx.fillStyle = snake.color;
+  ctx.strokeStyle = snake.accent;
+  ctx.lineWidth = Math.max(1.3, snake.size * 0.036);
 
   for (let i = snake.body.length - 1; i >= 0; i--) {
     const section = snake.body[i]!;
     if (!inBbox(section, half, view)) continue;
 
-    if (imageReady(circle)) {
-      ctx.drawImage(
-        circle,
-        section.x - half,
-        section.y - half,
-        snake.size,
-        snake.size
-      );
-    } else {
-      ctx.beginPath();
-      ctx.arc(section.x, section.y, half, 0, Math.PI * 2);
-      ctx.fillStyle = snake.color;
-      ctx.fill();
-      ctx.lineWidth = Math.max(1.3, snake.size * 0.036);
-      ctx.strokeStyle = snake.accent;
-      ctx.stroke();
-    }
+    ctx.beginPath();
+    ctx.arc(section.x, section.y, half, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
   }
 }
 
 function rotateLocal(angle: number, x: number, y: number): Point {
   const sin = Math.sin(angle);
   const cos = Math.cos(angle);
-
   return {
     x: x * cos - y * sin,
     y: x * sin + y * cos,
   };
 }
 
-function drawEyes(
-  ctx: CanvasRenderingContext2D,
-  snake: Snake,
-  eyeWhite: HTMLImageElement,
-  eyeBlack: HTMLImageElement
-) {
-  if (!imageReady(eyeWhite) || !imageReady(eyeBlack)) return;
-
-  const scale = snake.size / SPRITE_SIZE;
-  const whiteSize = 28 * scale;
-  const blackSize = 14 * scale;
-  const whiteHalf = whiteSize / 2;
-  const blackHalf = blackSize / 2;
-  const lateral = snake.size * 0.25;
-  const forward = snake.size * 0.125;
-  const pupilForward = whiteSize * 0.25;
+function drawEyes(ctx: CanvasRenderingContext2D, snake: Snake) {
+  const size = snake.size;
+  const whiteRadius = size * EYE_WHITE_RATIO;
+  const blackRadius = size * EYE_BLACK_RATIO;
+  const lateral = size * EYE_LATERAL_RATIO;
+  const forward = size * EYE_FORWARD_RATIO;
+  const pupilForward = size * PUPIL_FORWARD_RATIO;
 
   const left = rotateLocal(snake.angle, -lateral, -forward);
   const right = rotateLocal(snake.angle, lateral, -forward);
@@ -166,22 +130,17 @@ function drawEyes(
   const rx = snake.head.x + right.x;
   const ry = snake.head.y + right.y;
 
-  ctx.drawImage(eyeWhite, lx - whiteHalf, ly - whiteHalf, whiteSize, whiteSize);
-  ctx.drawImage(eyeWhite, rx - whiteHalf, ry - whiteHalf, whiteSize, whiteSize);
-  ctx.drawImage(
-    eyeBlack,
-    lx + pupil.x - blackHalf,
-    ly + pupil.y - blackHalf,
-    blackSize,
-    blackSize
-  );
-  ctx.drawImage(
-    eyeBlack,
-    rx + pupil.x - blackHalf,
-    ry + pupil.y - blackHalf,
-    blackSize,
-    blackSize
-  );
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(lx, ly, whiteRadius, 0, Math.PI * 2);
+  ctx.arc(rx, ry, whiteRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#000000";
+  ctx.beginPath();
+  ctx.arc(lx + pupil.x, ly + pupil.y, blackRadius, 0, Math.PI * 2);
+  ctx.arc(rx + pupil.x, ry + pupil.y, blackRadius, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 export function pickCameraTarget(
@@ -219,18 +178,11 @@ export function drawFrame(
   ctx: CanvasRenderingContext2D,
   viewport: Viewport,
   snapshot: GameSnapshot,
-  camera: Camera,
-  tile: HTMLImageElement,
-  circle: HTMLImageElement,
-  shadow: HTMLImageElement,
-  eyeWhite: HTMLImageElement,
-  eyeBlack: HTMLImageElement
+  camera: Camera
 ): void {
   ctx.setTransform(viewport.ratio, 0, 0, viewport.ratio, 0, 0);
-  ctx.fillStyle = "#444";
+  ctx.fillStyle = "#1a1a1a";
   ctx.fillRect(0, 0, viewport.width, viewport.height);
-
-  const world = snapshot.world;
 
   ctx.save();
   ctx.translate(viewport.width / 2 - camera.x, viewport.height / 2 - camera.y);
@@ -242,19 +194,15 @@ export function drawFrame(
     h: viewport.height,
   };
 
-  drawBackground(ctx, world, view, tile);
+  drawBackground(ctx, snapshot.world, view);
   drawFood(ctx, snapshot.food, view);
 
   for (const snake of snapshot.snakes) {
-    if (!snake.alive) continue;
-    drawShadows(ctx, snake, shadow, view);
-  }
+    if(!snake.alive) continue;
+    drawSnakeBody(ctx, snake, view);
 
-  for (const snake of snapshot.snakes) {
-    if (!snake.alive) continue;
-    drawSnakeBody(ctx, snake, circle, view);
     if (inBbox(snake.head, snake.size + 40, view)) {
-      drawEyes(ctx, snake, eyeWhite, eyeBlack);
+      drawEyes(ctx, snake);
     }
   }
 
