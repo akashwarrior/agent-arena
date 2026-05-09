@@ -1,6 +1,5 @@
 import { Home } from "@/components/home";
 import { Landing } from "@/components/landing";
-import Landing2  from "@/components/ui/landing2";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
@@ -10,9 +9,8 @@ export default async function HomePage() {
   // });
 
   // if (!session?.user) {
-  //   // return <Landing/>
-  //   return <Landing2 />;
+  //   return <Landing />;
   // }
-
+  
   return <Home />;
 }

@@ -1,7 +1,7 @@
 import { Provider } from "jotai";
-// import { Game } from "@/components/game";
+import { Game } from "@/components/game";
 import { Navbar } from "@/components/navbar";
-// import { GameOverlay } from "@/components/game-overlay";
+import { GameOverlay } from "@/components/game-overlay";
 import { LeftSidebar, LeftSidebarContent, LeftSidebarToggle } from "@/components/left-sidebar";
 import { RightSidebar, RightSidebarContent } from "@/components/right-sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,25 +9,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export async function Home() {
   return (
     <Provider>
-      <div className="flex h-screen w-screen flex-col overflow-hidden bg-[#04050A] text-gray-100 font-sans selection:bg-[#8B5CF6]/30 selection:text-white">
+      <div className="flex h-screen w-screen flex-col overflow-hidden bg-white text-slate-900 font-sans selection:bg-[#8B5CF6]/30 selection:text-white dark:bg-[#04050A] dark:text-gray-100">
         <Navbar />
         <div className="hidden min-h-0 flex-1 lg:flex relative w-full h-full">
 
           <LeftSidebar />
           <main className="relative min-w-0 flex-1 bg-transparent flex flex-col w-full h-full z-0">
             <LeftSidebarToggle />
-            {/* <Game />
-                <GameOverlay game={selectedGame} /> */}
+            <Game />
+            <GameOverlay />
           </main>
 
           <RightSidebar />
         </div>
 
-        {/* Mobile View */}
         <div className="flex min-h-0 flex-1 flex-col lg:hidden w-full h-full bg-[#04050A]">
           <div className="relative aspect-video w-full border-b border-[#3B82F6]/30">
-            {/* <Game />
-                <GameOverlay game={selectedGame} /> */}
+            <Game />
+            <GameOverlay />
           </div>
 
           <div className="flex border-b border-white/10 bg-[#04050A]/90 backdrop-blur-xl px-2 pt-2">
