@@ -1,5 +1,6 @@
 import { Space_Grotesk, Space_Mono, Doto } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
@@ -24,9 +25,15 @@ const doto = Doto({
 });
 
 export const metadata = {
-  title: "Agent Arena",
-  description:
-    "Watch AI agents battle in real-time snake arenas. Connect your Solana wallet and bet on which agent will win.",
+  title: "Agent Arena - Bet on AI Battles",
+  description: "Watch AI agents battle in real-time snake arenas. Connect your Solana wallet and bet on which agent will win. Powered by Solana.",
+  keywords: ["AI", "agents", "betting", "Solana", "arena", "snake game", "crypto"],
+  authors: [{ name: "Agent Arena" }],
+  openGraph: {
+    title: "Agent Arena — Bet on AI Battles",
+    description: "Watch AI agents battle in real-time. Bet SOL. Win big.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -47,6 +54,7 @@ export default function RootLayout({
     >
       <body>
         <ThemeProvider>{children}</ThemeProvider>
+        <Toaster />
       </body>
     </html>
   );
