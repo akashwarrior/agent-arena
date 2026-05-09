@@ -1,0 +1,130 @@
+import useSWR from "swr";
+import useSWRInfinite from "swr/infinite";
+import type { GamesResponse, GameDetailResponse, BetsResponse, BetPlacementResponse, LeaderboardResponse } from "@/lib/swr-types";
+
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: "Request failed" }));
+    throw new Error(error.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+};
+
+export function useGames() {
+  const { data, error, isLoading, size, setSize, isValidating, mutate } =
+    useSWRInfinite<GamesResponse>(
+      (pageIndex, previousPageData) => {
+        const cursor = pageIndex === 0 ? null : previousPageData?.nextCursor;
+        const params = new URLSearchParams();
+        if (cursor) params.set("cursor", cursor);
+        params.set("limit", "15");
+        return `/api/games?${params.toString()}`;
+      },
+      fetcher,
+    );
+
+  const games = data ? data.flatMap((page) => page.games) : [];
+  const hasMore = data
+    ? data[data.length - 1]?.nextCursor !== null
+    : true;
+  const isLoadingMore =
+    isLoading ||
+    (size > 0 && data && typeof data[size - 1] === "undefined");
+
+  return {
+    games,
+    hasMore: !!hasMore,
+    isLoading,
+    isLoadingMore: !!isLoadingMore,
+    isValidating,
+    error,
+    loadMore: () => setSize(size + 1),
+    mutate,
+  };
+}
+
+export function useGameDetail(gameId: string | null) {
+  const { data, error, isLoading, mutate } = useSWR<GameDetailResponse>(
+    gameId ? `/api/games/${gameId}` : null,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+
+  return {
+    game: data?.game ?? null,
+    userBet: data?.userBet ?? null,
+    isLoading,
+    error,
+    mutate,
+  };
+}
+
+export function useBets(enabled = true) {
+  const { data, error, isLoading, size, setSize, isValidating, mutate } =
+    useSWRInfinite<BetsResponse>(
+      (pageIndex, previousPageData) => {
+        if (!enabled) return null;
+        if (previousPageData && !previousPageData.nextCursor) return null;
+        const cursor = pageIndex === 0 ? null : previousPageData?.nextCursor;
+        const params = new URLSearchParams();
+        if (cursor) params.set("cursor", cursor);
+        params.set("limit", "20");
+        return `/api/bets?${params.toString()}`;
+      },
+      fetcher,
+    );
+
+  const bets = data ? data.flatMap((page) => page.bets) : [];
+  const hasMore = data
+    ? data[data.length - 1]?.nextCursor !== null
+    : true;
+
+  return {
+    bets,
+    hasMore: !!hasMore,
+    isLoading,
+    isLoadingMore: !!(
+      isLoading ||
+      (size > 0 && data && typeof data[size - 1] === "undefined")
+    ),
+    isValidating,
+    error,
+    loadMore: () => setSize(size + 1),
+    mutate,
+  };
+}
+
+export function useLeaderboard() {
+  const { data, error, isLoading, mutate } = useSWR<LeaderboardResponse>(
+    "/api/leaderboard",
+    fetcher,
+  );
+
+  return {
+    leaderboard: data?.leaderboard ?? [],
+    isLoading,
+    error,
+    mutate,
+  };
+}
+
+export async function placeBet(
+  gameId: string,
+  agentId: string,
+  amount: number,
+  walletAddress: string
+): Promise<BetPlacementResponse> {
+  const res = await fetch("/api/bets", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ gameId, agentId, amount, walletAddress }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: "Failed to place bet" }));
+    throw new Error(error.error || `HTTP ${res.status}`);
+  }
+
+  return res.json();
+}
