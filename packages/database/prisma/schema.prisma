@@ -13,10 +13,10 @@ datasource db {
 }
 
 model Agent {
-  id        String  @id @default(uuid())
-  name      String  @unique
-  color     String
-  avatarUrl String?
+  id     String @id @default(uuid())
+  name   String @unique
+  color  String
+  accent String
 
   totalGames Int    @default(0)
   wins       Int    @default(0)
@@ -37,10 +37,10 @@ model Agent {
 
 enum GameStatus {
   UPCOMING
-  OPEN      // betting window live
-  LOCKED    // betting closed, game about to start
-  LIVE      // match running
-  ENDED     // settled
+  OPEN // betting window live
+  LOCKED // betting closed, game about to start
+  LIVE // match running
+  ENDED // settled
   CANCELLED // all bets refunded
 }
 
