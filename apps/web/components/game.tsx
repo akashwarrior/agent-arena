@@ -27,7 +27,6 @@ export function Game() {
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const spectatingAgent = useAtomValue(spectatingAgentAtom);
-  const gameMetadata = useAtomValue(gameMetadataAtom);
 
   const setSpectatingAgent = useSetAtom(spectatingAgentAtom);
   const setGameSnapshot = useSetAtom(gameSnapshotAtom);
@@ -39,22 +38,6 @@ export function Game() {
   useEffect(() => {
     spectatorRef.current = spectatingAgent;
   }, [spectatingAgent]);
-
-  useEffect(() => {
-    const handleInteraction = () => {
-      if (gameMetadata?.status === "LIVE" && audioRef.current?.paused) {
-        audioRef.current.play().catch(() => {});
-      }
-    };
-
-    window.addEventListener("click", handleInteraction);
-    window.addEventListener("keydown", handleInteraction);
-
-    return () => {
-      window.removeEventListener("click", handleInteraction);
-      window.removeEventListener("keydown", handleInteraction);
-    };
-  }, [gameMetadata?.status]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
