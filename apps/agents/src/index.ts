@@ -21,6 +21,8 @@ let lastEngineTickAt = Date.now();
 let nextMatchCheckAt = Date.now();
 let isStartingMatch = false;
 
+let currentGame: (GameRecord | null) = null;
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
@@ -155,7 +157,9 @@ function getLiveMetadata(activeEngine: GameEngine): GameMetadata {
 }
 
 function finishCurrentMatch(): void {
-  if (!engine) return;
+  if (!engine) {
+    return;
+  }
 
   engine.finishMatch();
   const snapshot = engine.getSnapshot();
@@ -175,6 +179,7 @@ function finishCurrentMatch(): void {
   });
 
   engine = null;
+  currentGame = null;
   scheduleMatchCheck(INTERMISSION_MS);
 }
 
@@ -215,6 +220,7 @@ function tickLoop(): void {
 async function startNextMatch(): Promise<void> {
   const game = await fetchNextGame();
   const now = Date.now();
+  currentGame = game;
 
   if (!game) {
     scheduleMatchCheck(IDLE_POLL_MS);
@@ -258,6 +264,10 @@ async function startNextMatch(): Promise<void> {
         scheduleMatchCheck(IDLE_POLL_MS);
         return;
       }
+      currentGame = {
+        ...game,
+        ...openedGame,
+      };
     }
     broadcastStatus(toGameMetadata(game, "OPEN"));
     scheduleMatchCheck(waitMs);
@@ -274,6 +284,10 @@ async function startNextMatch(): Promise<void> {
       scheduleMatchCheck(IDLE_POLL_MS);
       return;
     }
+    currentGame = {
+      ...game,
+      ...lockedGame,
+    };
     broadcastStatus(toGameMetadata(game, "LOCKED"));
   }
 
@@ -285,6 +299,10 @@ async function startNextMatch(): Promise<void> {
     scheduleMatchCheck(IDLE_POLL_MS);
     return;
   }
+  currentGame = {
+    ...game,
+    ...liveGame,
+  };
 
   const startedAtMs = liveGame.startedAt?.getTime() ?? Date.now();
   const config: GameConfig = {
@@ -338,10 +356,20 @@ const server = Bun.serve<ClientData, never>({
         client.send(
           JSON.stringify({ type: "snapshot", data: engine.getSnapshot() }),
         );
+        return;
+      }
+
+      if (currentGame) {
+        client.send(
+          JSON.stringify({
+            type: "status",
+            data: toGameMetadata(currentGame, currentGame.status),
+          }),
+        );
       }
     },
 
-    message(client, raw) {},
+    message(client, raw) { },
 
     close(client, code, reason) {
       clients.delete(client);
