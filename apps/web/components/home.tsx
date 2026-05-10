@@ -2,7 +2,11 @@ import { Provider } from "jotai";
 import { Game } from "@/components/game";
 import { Navbar } from "@/components/navbar";
 import { GameOverlay } from "@/components/game-overlay";
-import { LeftSidebar, LeftSidebarContent, LeftSidebarToggle } from "@/components/left-sidebar";
+import {
+  LeftSidebar,
+  LeftSidebarContent,
+  LeftSidebarToggle,
+} from "@/components/left-sidebar";
 import { RightSidebar, RightSidebarContent } from "@/components/right-sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { prisma } from "@repo/db";
@@ -13,8 +17,13 @@ import { unstable_serialize } from "swr/infinite";
 async function getInitialData() {
   try {
     const games = await prisma.game.findMany({
+      where: {
+        status: {
+          in: ["LIVE", "UPCOMING", "OPEN"],
+        },
+      },
       take: 16,
-      orderBy: { createdAt: "desc" },
+      orderBy: { startedAt: "asc" },
       include: {
         agents: {
           include: {
@@ -40,13 +49,15 @@ async function getInitialData() {
       nextCursor,
     };
 
-    const liveGame = normalizedGames.games.find(
-      (g) => g.status === "LIVE"
-    ) || normalizedGames.games.find(
-      (g) => g.status === "OPEN"
-    ) || null;
+    const liveGame =
+      normalizedGames.games.find((g) => g.status === "LIVE") ||
+      normalizedGames.games.find((g) => g.status === "OPEN") ||
+      null;
 
-    return { initialGames: [normalizedGames], activeGame: liveGame as GameWithAgents | null };
+    return {
+      initialGames: [normalizedGames],
+      activeGame: liveGame as GameWithAgents | null,
+    };
   } catch {
     return { initialGames: null, activeGame: null };
   }
@@ -67,33 +78,57 @@ export async function Home() {
         <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
           <Navbar />
 
-          <div className="hidden min-h-0 flex-1 lg:flex w-full">
+          <div className="hidden min-h-0 w-full flex-1 lg:flex">
             <LeftSidebar />
 
-            <main className="relative min-w-0 flex-1 flex flex-col bg-muted">
+            <main className="relative flex min-w-0 flex-1 flex-col bg-muted">
               <LeftSidebarToggle />
-              <div className="flex-1 flex items-center justify-center p-4 md:p-6">
-                <div className="w-full max-w-5xl aspect-video relative bg-card border border-border">
+              <div className="flex flex-1 items-center justify-center p-4 md:p-6">
+                <div className="relative aspect-video w-full max-w-5xl border border-border bg-card">
                   <Game />
                   <GameOverlay />
                 </div>
               </div>
 
-              <div className="px-4 py-2 border-t border-border bg-card flex items-center justify-between">
+              <div className="flex items-center justify-between border-t border-border bg-card px-4 py-2">
                 <div className="flex items-center gap-4">
-                  <span className="text-label text-muted-foreground">ROUND <span className="text-foreground">#{activeGame?.id.slice(0, 6).toUpperCase() || "---"}</span></span>
-                  <span className="text-label text-muted-foreground">STATUS <span className={activeGame?.status === "LIVE" ? "text-success" : "text-muted-foreground"}>{activeGame?.status || "IDLE"}</span></span>
+                  <span className="text-label text-muted-foreground">
+                    ROUND{" "}
+                    <span className="text-foreground">
+                      #{activeGame?.id.slice(0, 6).toUpperCase() || "---"}
+                    </span>
+                  </span>
+                  <span className="text-label text-muted-foreground">
+                    STATUS{" "}
+                    <span
+                      className={
+                        activeGame?.status === "LIVE"
+                          ? "text-success"
+                          : "text-muted-foreground"
+                      }
+                    >
+                      {activeGame?.status || "IDLE"}
+                    </span>
+                  </span>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-label text-muted-foreground">POOL <span className="text-foreground">{activeGame ? `${activeGame.totalPool.toFixed(1)}` : "0.0"} SOL</span></span>
+                  <span className="text-label text-muted-foreground">
+                    POOL{" "}
+                    <span className="text-foreground">
+                      {activeGame
+                        ? `${activeGame.totalPool.toFixed(1)}`
+                        : "0.0"}{" "}
+                      SOL
+                    </span>
+                  </span>
                 </div>
               </div>
             </main>
 
-            <RightSidebar activeGame={activeGame} />
+            <RightSidebar />
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col lg:hidden w-full bg-background">
+          <div className="flex min-h-0 w-full flex-1 flex-col bg-background lg:hidden">
             <div className="relative aspect-video w-full border-b border-border bg-card">
               <Game />
               <GameOverlay />
@@ -101,22 +136,22 @@ export async function Home() {
 
             <div className="flex border-b border-border bg-background">
               <Tabs defaultValue="games" className="w-full">
-                <TabsList className="w-full bg-transparent p-0 h-10 border-b-0 rounded-none flex">
+                <TabsList className="flex h-10 w-full rounded-none border-b-0 bg-transparent p-0">
                   <TabsTrigger
                     value="games"
-                    className="flex-1 rounded-none text-label data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-foreground text-muted-foreground"
+                    className="text-label flex-1 rounded-none text-muted-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
                   >
                     GAMES
                   </TabsTrigger>
                   <TabsTrigger
                     value="bets"
-                    className="flex-1 rounded-none text-label data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-foreground text-muted-foreground"
+                    className="text-label flex-1 rounded-none text-muted-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
                   >
                     MY BETS
                   </TabsTrigger>
                   <TabsTrigger
                     value="info"
-                    className="flex-1 rounded-none text-label data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-foreground text-muted-foreground"
+                    className="text-label flex-1 rounded-none text-muted-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
                   >
                     DATA
                   </TabsTrigger>

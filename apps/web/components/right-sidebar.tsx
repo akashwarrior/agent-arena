@@ -1,23 +1,42 @@
 "use client";
 
 import { useAtomValue } from "jotai";
-import { useHydrateAtoms } from 'jotai/utils'
-import { activeGameAtom, gameSnapshotAtom } from "@/lib/store";
+import type { Agent, GameAgentMetadata } from "@repo/types";
+import {
+  gameSnapshotAtom,
+  gameMetadataAtom,
+  matchWinnerAtom,
+} from "@/lib/store";
 import { useLeaderboard } from "@/lib/swr";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2 } from "lucide-react";
-import { GameWithAgents } from "@/lib/swr-types";
 
-function SegmentedBar({ value, max, color = "foreground" }: { value: number; max: number; color?: string }) {
+type SidebarAgent = (Agent | GameAgentMetadata) & {
+  score: number;
+  alive: boolean;
+  rank?: number | null;
+};
+
+function SegmentedBar({
+  value,
+  max,
+  color = "foreground",
+}: {
+  value: number;
+  max: number;
+  color?: "foreground" | "muted";
+}) {
   const segments = 12;
-  const filled = Math.round((value / max) * segments);
+  const filled = Math.round((value / Math.max(max, 1)) * segments);
+  const filledClass =
+    color === "muted" ? "bg-muted-foreground" : "bg-foreground";
 
   return (
     <div className="flex gap-0.5">
       {Array.from({ length: segments }).map((_, i) => (
         <div
           key={i}
-          className={`h-1 flex-1 ${i < filled ? `bg-${color}` : "bg-muted"}`}
+          className={`h-1 flex-1 ${i < filled ? filledClass : "bg-muted"}`}
         />
       ))}
     </div>
@@ -29,7 +48,7 @@ function AgentStatus({
   score,
   maxScore,
   alive,
-  isWinner
+  isWinner,
 }: {
   name: string;
   score: number;
@@ -39,71 +58,90 @@ function AgentStatus({
 }) {
   return (
     <div className="py-2">
-      <div className="flex items-center justify-between mb-1">
+      <div className="mb-1 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className={`size-1.5 ${alive ? "bg-foreground" : "bg-muted-foreground"}`} />
-          <span className={`text-body-sm uppercase tracking-wide ${alive ? "text-foreground" : "text-muted-foreground line-through"}`}>
+          <div
+            className={`size-1.5 ${alive ? "bg-foreground" : "bg-muted-foreground"}`}
+          />
+          <span
+            className={`text-body-sm tracking-wide uppercase ${alive ? "text-foreground" : "text-muted-foreground line-through"}`}
+          >
             {name}
           </span>
           {isWinner && (
-            <span className="text-label text-success border border-success px-1.5 py-0.5">WIN</span>
+            <span className="text-label border border-success px-1.5 py-0.5 text-success">
+              WIN
+            </span>
           )}
         </div>
-        <span className="text-data text-foreground">
-          {score}
-        </span>
+        <span className="text-data text-foreground">{score}</span>
       </div>
-      <SegmentedBar value={score} max={maxScore} color={alive ? "foreground" : "muted-foreground"} />
+      <SegmentedBar
+        value={score}
+        max={maxScore}
+        color={alive ? "foreground" : "muted"}
+      />
     </div>
   );
 }
 
-function LeaderboardRow({ rank, name, netEarnings }: { rank: number; name: string; netEarnings: number }) {
+function LeaderboardRow({
+  rank,
+  name,
+  netEarnings,
+}: {
+  rank: number;
+  name: string;
+  netEarnings: number;
+}) {
   return (
-    <div className="flex items-center justify-between py-2 px-4 hover:bg-secondary">
+    <div className="flex items-center justify-between px-4 py-2 hover:bg-secondary">
       <div className="flex items-center gap-3">
-        <span className="text-label text-muted-foreground w-5 text-right">
+        <span className="text-label w-5 text-right text-muted-foreground">
           #{rank}
         </span>
-        <span className="text-body-sm text-foreground uppercase tracking-wide font-mono">
+        <span className="text-body-sm font-mono tracking-wide text-foreground uppercase">
           {name}
         </span>
       </div>
-      <span className={`text-label text-data ${netEarnings >= 0 ? "text-success" : "text-muted-foreground"}`}>
-        {netEarnings >= 0 ? "+" : ""}{netEarnings.toFixed(1)}
+      <span
+        className={`text-label text-data ${netEarnings >= 0 ? "text-success" : "text-muted-foreground"}`}
+      >
+        {netEarnings >= 0 ? "+" : ""}
+        {netEarnings.toFixed(1)}
       </span>
     </div>
   );
 }
 
-function ActivityLog() {
-  return (
-    <div className="flex flex-col gap-1.5 overflow-y-auto h-full">
-      <div className="flex items-start gap-2 text-caption text-muted-foreground">
-        <span className="shrink-0 w-14 text-right">--:--:--</span>
-        <span className="shrink-0 w-12">SYS</span>
-        <span>AWAITING EVENTS</span>
-      </div>
-    </div>
-  );
-}
-
 export function RightSidebarContent() {
-  const activeGame = useAtomValue(activeGameAtom);
   const snapshot = useAtomValue(gameSnapshotAtom);
+  const gameMetadata = useAtomValue(gameMetadataAtom);
+  const matchWinner = useAtomValue(matchWinnerAtom);
+
   const { leaderboard, isLoading: leaderboardLoading } = useLeaderboard();
 
-  const liveSnakes = snapshot ? snapshot.snakes : null;
+  const liveAgents =
+    snapshot &&
+    gameMetadata?.status === "LIVE" &&
+    snapshot.gameId === gameMetadata.id
+      ? snapshot.agents
+      : null;
+  const metaAgents = gameMetadata?.agents ?? [];
 
-  const agents = activeGame
-    ? (liveSnakes || activeGame.agents.map(a => ({ ...a, score: 0, alive: true })))
-      .sort((a, b) => b.score - a.score)
-    : [];
-  const maxScore = Math.max(...agents.map(a => a.score), 1);
+  const agents: SidebarAgent[] = liveAgents
+    ? [...liveAgents].sort(
+        (a, b) =>
+          (a.rank ?? Number.MAX_SAFE_INTEGER) -
+          (b.rank ?? Number.MAX_SAFE_INTEGER)
+      )
+    : metaAgents.map((a) => ({ ...a, score: 0, alive: true }));
 
-  if (!activeGame) {
+  const maxScore = Math.max(...agents.map((a) => a.score), 1);
+
+  if (!gameMetadata) {
     return (
-      <div className="flex flex-col h-full gap-0 bg-card">
+      <div className="flex h-full flex-col gap-0 bg-card">
         <div className="flex items-center justify-center py-16">
           <p className="text-label text-muted-foreground">[ NO ACTIVE GAME ]</p>
         </div>
@@ -111,35 +149,44 @@ export function RightSidebarContent() {
     );
   }
 
+  const isLive = gameMetadata?.status === "LIVE";
+
   return (
-    <div className="flex flex-col h-full gap-0 bg-card">
-      <div className="shrink-0 px-4 py-3 border-b border-border">
-        <div className="flex items-start justify-between mb-2">
+    <div className="flex min-h-full flex-col gap-0 bg-card">
+      <div className="border-b border-border px-4 py-3">
+        <div className="mb-2 flex items-start justify-between">
           <div>
             <h3 className="text-display-sm text-foreground">
-              {activeGame.name}
+              {gameMetadata.name}
             </h3>
-            <div className="flex items-center gap-3 mt-1">
-              {activeGame.status === "LIVE" && (
+            <div className="mt-1 flex items-center gap-3">
+              {isLive && (
                 <span className="inline-flex items-center gap-1.5">
                   <span className="live-dot" />
                   <span className="text-label text-accent">LIVE</span>
                 </span>
               )}
-              <span className="text-label text-muted-foreground">R{activeGame.id.slice(0, 6).toUpperCase()}</span>
+              <span className="text-label text-muted-foreground">
+                R{gameMetadata.id.slice(0, 6).toUpperCase()}
+              </span>
             </div>
           </div>
         </div>
 
-        <div className="py-3 border-b border-border">
-          <span className="text-label text-muted-foreground block mb-1">PRIZE POOL</span>
-          <span className="text-display-md text-foreground text-data">
-            {activeGame.totalPool.toFixed(1)}<span className="text-label text-muted-foreground ml-2">SOL</span>
+        <div className="border-b border-border py-3">
+          <span className="text-label mb-1 block text-muted-foreground">
+            PRIZE POOL
+          </span>
+          <span className="text-display-md text-data text-foreground">
+            {gameMetadata.pool.toFixed(1)}
+            <span className="text-label ml-2 text-muted-foreground">SOL</span>
           </span>
         </div>
 
         <div className="pt-3">
-          <span className="text-label text-muted-foreground block mb-2">STATUS</span>
+          <span className="text-label mb-2 block text-muted-foreground">
+            STATUS
+          </span>
           {agents.map((agent) => (
             <AgentStatus
               key={agent.id}
@@ -147,28 +194,20 @@ export function RightSidebarContent() {
               score={agent.score}
               maxScore={maxScore}
               alive={agent.alive}
-              isWinner={activeGame.winnerAgentId === agent.id}
+              isWinner={matchWinner?.winnerId === agent.id}
             />
           ))}
         </div>
       </div>
 
-      <div className="px-4 py-3 bg-secondary h-1/3">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="live-dot" />
-          <span className="text-label text-foreground">ACTIVITY</span>
-        </div>
-        <ActivityLog />
-      </div>
-
-      <div className="flex-1 flex flex-col min-h-0 border-y border-border">
-        <div className="px-4 py-2.5 border-b border-border bg-secondary">
+      <div className="flex min-h-0 flex-1 flex-col border-y border-border">
+        <div className="border-b border-border bg-secondary px-4 py-2.5">
           <span className="text-label text-muted-foreground">TOP BETTORS</span>
         </div>
         <ScrollArea className="flex-1">
           {leaderboardLoading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="size-3 text-muted-foreground animate-spin" />
+              <Loader2 className="size-3 animate-spin text-muted-foreground" />
             </div>
           ) : leaderboard.length === 0 ? (
             <div className="flex items-center justify-center py-8">
@@ -185,22 +224,20 @@ export function RightSidebarContent() {
   );
 }
 
-export function RightSidebar({ activeGame }: { activeGame: GameWithAgents | null }) {
-  useHydrateAtoms([[activeGameAtom, activeGame]]);
-
+export function RightSidebar() {
   return (
-    <aside className="hidden h-full w-75 flex-col border-l border-border bg-card lg:flex z-10 relative">
-      <div className="flex items-center px-4 py-2.5 border-b border-border bg-secondary">
+    <aside className="relative z-10 hidden h-full w-75 flex-col border-l border-border bg-card lg:flex">
+      <div className="flex items-center border-b border-border bg-secondary px-4 py-2.5">
         <span className="text-label text-muted-foreground">TELEMETRY</span>
       </div>
 
-      <div className="min-h-0 flex-1 bg-card overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto bg-card">
         <RightSidebarContent />
       </div>
 
-      <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-secondary">
+      <div className="flex items-center justify-between border-t border-border bg-secondary px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="size-1.5 bg-success rounded-full" />
+          <span className="size-1.5 rounded-full bg-success" />
           <span className="text-label text-foreground">SYNCED</span>
         </div>
       </div>

@@ -1,15 +1,12 @@
 import { heuristicStrategy, resetStrategyMemory } from "./strategy";
-import type { Food, GameSnapshot, Point, Snake, World } from "@repo/types";
-
-const SNAKE_SEEDS = [
-  { id: "deepseek", name: "DeepSeek", color: "#60a5fa", accent: "#006ff6" },
-  { id: "claude", name: "Claude", color: "#f97316", accent: "#d37100" },
-  { id: "openai", name: "OpenAI", color: "#34d399", accent: "#007d2c" },
-  { id: "gemini", name: "Gemini", color: "#a78bfa", accent: "#5934ff" },
-  { id: "grok", name: "Grok", color: "#f43f5e", accent: "#bf0016" },
-] as const;
-
-const MATCH_DURATION = 3 * 60 * 1000;
+import type {
+  Agent,
+  Food,
+  GameAgentMetadata,
+  GameSnapshot,
+  Point,
+  World,
+} from "@repo/types";
 
 const SPRITE_SIZE = 60;
 const INITIAL_SCALE = 0.6;
@@ -24,11 +21,11 @@ const FOOD_SIZE = 8;
 const FOOD_PULL_PER_FRAME = 14;
 
 const WORLD: World = {
-  WIDTH: 1600,
-  HEIGHT: 1000,
+  width: 1600,
+  height: 1000,
 };
 
-type SnakeInternal = Snake & {
+type AgentInternal = Agent & {
   headPath: Point[];
 };
 
@@ -58,24 +55,25 @@ function createFood(id: string, x: number, y: number): Food {
 }
 
 function createRandomFood(id: string): Food {
-  return createFood(id, randomInt(0, WORLD.WIDTH), randomInt(0, WORLD.HEIGHT));
+  return createFood(id, randomInt(0, WORLD.width), randomInt(0, WORLD.height));
 }
 
-function spawnOffset(index: number): Point {
+function spawnOffset(index: number, total: number): Point {
   return {
-    x: (index - (SNAKE_SEEDS.length - 1) / 2) * 200,
+    x: (index - (total - 1) / 2) * 200,
     y: 0,
   };
 }
 
-function createSnake(
-  seed: (typeof SNAKE_SEEDS)[number],
+function createAgent(
+  agentData: GameAgentMetadata,
   index: number,
-): SnakeInternal {
-  const offset = spawnOffset(index);
+  total: number,
+): AgentInternal {
+  const offset = spawnOffset(index, total);
   const head = {
-    x: WORLD.WIDTH / 2 + offset.x,
-    y: WORLD.HEIGHT / 2 + offset.y,
+    x: WORLD.width / 2 + offset.x,
+    y: WORLD.height / 2 + offset.y,
   };
   const headPath: Point[] = [{ x: head.x, y: head.y }];
 
@@ -87,10 +85,10 @@ function createSnake(
   }
 
   return {
-    id: seed.id,
-    name: seed.name,
-    color: seed.color,
-    accent: seed.accent,
+    id: agentData.id,
+    name: agentData.name,
+    color: agentData.color,
+    accent: agentData.accent,
     alive: true,
     score: 0,
     size: BASE_SIZE,
@@ -127,22 +125,38 @@ function nextSectionIndex(
   return i - 1;
 }
 
+export type GameConfig = {
+  id: string;
+  name: string;
+  pool: number;
+  durationMs: number;
+  startedAtMs?: number;
+  agents: GameAgentMetadata[];
+};
+
 export class GameEngine {
-  public readonly roundId: string;
-  public readonly roundNumber: number;
-  private remainingMs: number = MATCH_DURATION;
+  public readonly id: string;
+  public readonly name: string;
+  public readonly pool: number;
+
+  private matchDuration: number;
+  private remainingMs: number;
   private elapsedMs: number;
   private startedAt: number;
   private food: Food[];
-  private snakes: Snake[];
-  private winnerId: string | null = null;
-  private readonly internals = new Map<string, SnakeInternal>();
+  private agents: AgentInternal[];
+  private readonly internals = new Map<string, AgentInternal>();
   private nextFoodSeq = 0;
+  private winnerId: string | null = null;
 
-  constructor(roundNumber: number) {
-    this.roundId = `round-${roundNumber}}`;
-    this.roundNumber = roundNumber;
-    this.elapsedMs = 0;
+  constructor(config: GameConfig) {
+    this.id = config.id;
+    this.name = config.name;
+    this.pool = config.pool;
+    this.matchDuration = Math.max(config.durationMs, 30000);
+    this.startedAt = config.startedAtMs ?? Date.now();
+    this.elapsedMs = clamp(Date.now() - this.startedAt, 0, this.matchDuration);
+    this.remainingMs = Math.max(0, this.matchDuration - this.elapsedMs);
 
     this.food = [];
     for (let i = 0; i < FOOD_COUNT; i++) {
@@ -150,49 +164,48 @@ export class GameEngine {
     }
 
     resetStrategyMemory();
-    this.snakes = [];
+    this.agents = [];
 
-    SNAKE_SEEDS.forEach((seed, index) => {
-      const snake = createSnake(seed, index);
-      this.snakes.push(snake);
-      this.internals.set(snake.id, snake);
+    config.agents.forEach((agentData, index) => {
+      const agent = createAgent(agentData, index, config.agents.length);
+      this.agents.push(agent);
+      this.internals.set(agent.id, agent);
     });
 
-    for (const snake of this.internals.values()) {
-      this.recomputeSections(snake);
+    for (const agent of this.internals.values()) {
+      this.recomputeSections(agent);
     }
     this.updateRanks();
-    this.startedAt = Date.now();
   }
 
   public isMatchComplete(): boolean {
     if (this.remainingMs <= 0) return true;
 
     let alive = 0;
-    for (const snake of this.snakes) {
-      if (snake.alive) alive++;
+    for (const agent of this.agents) {
+      if (agent.alive) alive++;
     }
     return alive <= 1;
   }
 
   public finishMatch(): void {
     this.updateRanks();
-    this.winnerId = this.snakes[0]?.id ?? null;
+    this.winnerId = this.agents[0]?.id ?? null;
     this.remainingMs = 0;
   }
 
   public tick(deltaSeconds: number, now: number): void {
-    const elapsedMs = clamp(now - this.startedAt, 0, MATCH_DURATION);
+    const elapsedMs = clamp(now - this.startedAt, 0, this.matchDuration);
     this.elapsedMs = elapsedMs;
-    this.remainingMs = Math.max(0, MATCH_DURATION - elapsedMs);
+    this.remainingMs = Math.max(0, this.matchDuration - elapsedMs);
 
-    for (const snake of this.internals.values()) {
-      if (!snake.alive) continue;
-      snake.survivedMs = elapsedMs;
-      snake.angle = heuristicStrategy({ self: snake, deltaSeconds });
-      this.moveSnake(snake, deltaSeconds);
-      const lastIndex = this.recomputeSections(snake);
-      this.adjustHeadPath(snake, lastIndex);
+    for (const agent of this.internals.values()) {
+      if (!agent.alive) continue;
+      agent.survivedMs = elapsedMs;
+      agent.angle = heuristicStrategy({ self: agent, deltaSeconds });
+      this.moveAgent(agent, deltaSeconds);
+      const lastIndex = this.recomputeSections(agent);
+      this.adjustHeadPath(agent, lastIndex);
     }
 
     this.handleFoodTouches(deltaSeconds);
@@ -202,32 +215,46 @@ export class GameEngine {
 
   public getSnapshot(): GameSnapshot {
     return {
+      gameId: this.id,
+      gameName: this.name,
       startedAt: this.startedAt,
-      roundNumber: this.roundNumber,
       elapsedMs: this.elapsedMs,
-      durationMs: MATCH_DURATION,
-      roundId: this.roundId,
+      durationMs: this.matchDuration,
       world: WORLD,
-      snakes: this.snakes,
+      agents: this.agents,
       food: this.food,
       remainingMs: this.remainingMs,
       winnerId: this.winnerId,
     };
   }
 
-  private nextFoodId(): string {
-    return `f${this.roundNumber}-${this.nextFoodSeq++}`;
+  public getAgents(): GameAgentMetadata[] {
+    return this.agents;
   }
 
-  private moveSnake(snake: SnakeInternal, deltaSeconds: number): void {
-    const padding = snake.size * 0.5;
+  public getWinnerId(): string | null {
+    return this.winnerId;
+  }
+
+  public getWinnerName(): string | null {
+    if (!this.winnerId) return null;
+    const agent = this.agents.find((s) => s.id === this.winnerId);
+    return agent?.name ?? null;
+  }
+
+  private nextFoodId(): string {
+    return `f-${this.nextFoodSeq++}`;
+  }
+
+  private moveAgent(agent: AgentInternal, deltaSeconds: number): void {
+    const padding = agent.size * 0.5;
     const minX = padding;
     const minY = padding;
-    const maxX = WORLD.WIDTH - padding;
-    const maxY = WORLD.HEIGHT - padding;
+    const maxX = WORLD.width - padding;
+    const maxY = WORLD.height - padding;
 
-    let nextX = snake.head.x + Math.sin(snake.angle) * SPEED * deltaSeconds;
-    let nextY = snake.head.y - Math.cos(snake.angle) * SPEED * deltaSeconds;
+    let nextX = agent.head.x + Math.sin(agent.angle) * SPEED * deltaSeconds;
+    let nextY = agent.head.y - Math.cos(agent.angle) * SPEED * deltaSeconds;
 
     const hitWall =
       nextX < minX || nextX > maxX || nextY < minY || nextY > maxY;
@@ -235,21 +262,21 @@ export class GameEngine {
     if (hitWall) {
       nextX = clamp(nextX, minX, maxX);
       nextY = clamp(nextY, minY, maxY);
-      snake.angle = Math.atan2(
-        WORLD.WIDTH / 2 - nextX,
-        nextY - WORLD.HEIGHT / 2,
+      agent.angle = Math.atan2(
+        WORLD.width / 2 - nextX,
+        nextY - WORLD.height / 2,
       );
     }
 
-    snake.head.x = nextX;
-    snake.head.y = nextY;
+    agent.head.x = nextX;
+    agent.head.y = nextY;
 
-    snake.headPath.pop();
-    snake.headPath.unshift({ x: nextX, y: nextY });
+    agent.headPath.pop();
+    agent.headPath.unshift({ x: nextX, y: nextY });
   }
 
-  private recomputeSections(snake: SnakeInternal): number {
-    const { body, headPath, length, size } = snake;
+  private recomputeSections(agent: AgentInternal): number {
+    const { body, headPath, length, size } = agent;
     let index = 0;
     let written = 0;
     const sectionDistance = preferredDistance(size);
@@ -274,42 +301,42 @@ export class GameEngine {
     return index;
   }
 
-  private adjustHeadPath(snake: SnakeInternal, lastIndex: number): void {
-    if (snake.headPath.length === 0) {
-      snake.headPath.push({ x: snake.head.x, y: snake.head.y });
+  private adjustHeadPath(agent: AgentInternal, lastIndex: number): void {
+    if (agent.headPath.length === 0) {
+      agent.headPath.push({ x: agent.head.x, y: agent.head.y });
       return;
     }
 
-    if (lastIndex >= snake.headPath.length - 1) {
-      const last = snake.headPath[snake.headPath.length - 1]!;
-      snake.headPath.push({ x: last.x, y: last.y });
+    if (lastIndex >= agent.headPath.length - 1) {
+      const last = agent.headPath[agent.headPath.length - 1]!;
+      agent.headPath.push({ x: last.x, y: last.y });
     } else {
-      snake.headPath.pop();
+      agent.headPath.pop();
     }
   }
 
   private handleFoodTouches(deltaSeconds: number): void {
     const pull = FOOD_PULL_PER_FRAME * (deltaSeconds * 60);
 
-    for (const snake of this.internals.values()) {
-      if (!snake.alive) continue;
-      const reach = snake.size * 0.5 + FOOD_SIZE;
+    for (const agent of this.internals.values()) {
+      if (!agent.alive) continue;
+      const reach = agent.size * 0.5 + FOOD_SIZE;
       const reachSq = reach * reach;
 
       for (let i = 0; i < this.food.length; i++) {
         const food = this.food[i]!;
 
-        if (distanceSquared(snake.head, food) <= reachSq) {
-          const dx = snake.head.x - food.x;
-          const dy = snake.head.y - food.y;
+        if (distanceSquared(agent.head, food) <= reachSq) {
+          const dx = agent.head.x - food.x;
+          const dy = agent.head.y - food.y;
           const dist = Math.hypot(dx, dy);
 
           if (dist <= pull) {
-            snake.score += 1;
-            snake.length += 1;
-            snake.size *= SIZE_GROWTH_FACTOR;
-            this.recomputeSections(snake);
-            this.food.splice(i, 1);
+            agent.score += 1;
+            agent.length += 1;
+            agent.size *= SIZE_GROWTH_FACTOR;
+            this.recomputeSections(agent);
+            this.food[i] = createRandomFood(this.nextFoodId());
           } else if (dist > 0) {
             const step = Math.min(pull, dist);
             food.x += (dx / dist) * step;
@@ -321,29 +348,29 @@ export class GameEngine {
   }
 
   private resolveCollisions(): void {
-    const living = this.snakes.filter((snake) => snake.alive);
+    const living = this.agents.filter((agent) => agent.alive);
     if (living.length < 2) return;
 
     const losers = new Set<string>();
 
-    for (const snake of living) {
+    for (const agent of living) {
       const edge = {
         x:
-          snake.head.x +
-          Math.sin(snake.angle) * (snake.size * 0.5 + EDGE_OFFSET),
+          agent.head.x +
+          Math.sin(agent.angle) * (agent.size * 0.5 + EDGE_OFFSET),
         y:
-          snake.head.y -
-          Math.cos(snake.angle) * (snake.size * 0.5 + EDGE_OFFSET),
+          agent.head.y -
+          Math.cos(agent.angle) * (agent.size * 0.5 + EDGE_OFFSET),
       };
 
       for (const other of living) {
-        if (other.id === snake.id) continue;
+        if (other.id === agent.id) continue;
         const hitDistance = EDGE_OFFSET + other.size * 0.5;
         const hitDistanceSq = hitDistance * hitDistance;
 
         for (const section of other.body) {
           if (distanceSquared(edge, section) <= hitDistanceSq) {
-            losers.add(snake.id);
+            losers.add(agent.id);
             break;
           }
         }
@@ -356,37 +383,37 @@ export class GameEngine {
     }
   }
 
-  private eliminate(snake: SnakeInternal): void {
-    if (!snake.alive) return;
+  private eliminate(agent: AgentInternal): void {
+    if (!agent.alive) return;
 
-    snake.alive = false;
-    snake.survivedMs = this.elapsedMs;
+    agent.alive = false;
+    agent.survivedMs = this.elapsedMs;
 
     const step = Math.max(
       1,
-      Math.round(snake.headPath.length / snake.length) * 2,
+      Math.round(agent.headPath.length / agent.length) * 2,
     );
-    for (let i = 0; i < snake.headPath.length; i += step) {
-      const point = snake.headPath[i]!;
+    for (let i = 0; i < agent.headPath.length; i += step) {
+      const point = agent.headPath[i]!;
       this.food.push(
         createFood(
           this.nextFoodId(),
-          clamp(point.x + randomInt(-10, 10), 0, WORLD.WIDTH),
-          clamp(point.y + randomInt(-10, 10), 0, WORLD.HEIGHT),
+          clamp(point.x + randomInt(-10, 10), 0, WORLD.width),
+          clamp(point.y + randomInt(-10, 10), 0, WORLD.height),
         ),
       );
     }
   }
 
   private updateRanks(): void {
-    this.snakes.sort((a, b) => {
+    this.agents.sort((a, b) => {
       if (a.alive !== b.alive) return a.alive ? -1 : 1;
       if (b.score !== a.score) return b.score - a.score;
       return b.survivedMs - a.survivedMs;
     });
 
-    this.snakes.forEach((snake, index) => {
-      snake.rank = index + 1;
+    this.agents.forEach((agent, index) => {
+      agent.rank = index + 1;
     });
   }
 }

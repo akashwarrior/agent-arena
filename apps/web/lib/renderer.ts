@@ -1,4 +1,4 @@
-import type { Food, GameSnapshot, Point, Snake, World } from "@repo/types";
+import type { Food, GameSnapshot, Point, Agent, World } from "@repo/types";
 
 export type Viewport = {
   width: number;
@@ -45,8 +45,8 @@ function drawBackground(
 ) {
   const startX = Math.max(Math.floor(view.x / TILE_SIZE) * TILE_SIZE, 0);
   const startY = Math.max(Math.floor(view.y / TILE_SIZE) * TILE_SIZE, 0);
-  const endX = Math.min(view.x + view.w, world.WIDTH);
-  const endY = Math.min(view.y + view.h, world.HEIGHT);
+  const endX = Math.min(view.x + view.w, world.width);
+  const endY = Math.min(view.y + view.h, world.height);
 
   ctx.fillStyle = "#d4d4d4";
   ctx.fillRect(startX, startY, endX - startX, endY - startY);
@@ -82,19 +82,19 @@ function drawFood(ctx: CanvasRenderingContext2D, food: Food[], view: Bbox) {
   ctx.fill();
 }
 
-function drawSnakeBody(
+function drawAgentBody(
   ctx: CanvasRenderingContext2D,
-  snake: Snake,
+  agent: Agent,
   view: Bbox
 ) {
-  const half = snake.size / 2;
+  const half = agent.size / 2;
 
-  ctx.fillStyle = snake.color;
-  ctx.strokeStyle = snake.accent;
-  ctx.lineWidth = Math.max(1.3, snake.size * 0.036);
+  ctx.fillStyle = agent.color;
+  ctx.strokeStyle = agent.accent;
+  ctx.lineWidth = Math.max(1.3, agent.size * 0.036);
 
-  for (let i = snake.body.length - 1; i >= 0; i--) {
-    const section = snake.body[i]!;
+  for (let i = agent.body.length - 1; i >= 0; i--) {
+    const section = agent.body[i]!;
     if (!inBbox(section, half, view)) continue;
 
     ctx.beginPath();
@@ -113,22 +113,22 @@ function rotateLocal(angle: number, x: number, y: number): Point {
   };
 }
 
-function drawEyes(ctx: CanvasRenderingContext2D, snake: Snake) {
-  const size = snake.size;
+function drawEyes(ctx: CanvasRenderingContext2D, agent: Agent) {
+  const size = agent.size;
   const whiteRadius = size * EYE_WHITE_RATIO;
   const blackRadius = size * EYE_BLACK_RATIO;
   const lateral = size * EYE_LATERAL_RATIO;
   const forward = size * EYE_FORWARD_RATIO;
   const pupilForward = size * PUPIL_FORWARD_RATIO;
 
-  const left = rotateLocal(snake.angle, -lateral, -forward);
-  const right = rotateLocal(snake.angle, lateral, -forward);
-  const pupil = rotateLocal(snake.angle, 0, -pupilForward);
+  const left = rotateLocal(agent.angle, -lateral, -forward);
+  const right = rotateLocal(agent.angle, lateral, -forward);
+  const pupil = rotateLocal(agent.angle, 0, -pupilForward);
 
-  const lx = snake.head.x + left.x;
-  const ly = snake.head.y + left.y;
-  const rx = snake.head.x + right.x;
-  const ry = snake.head.y + right.y;
+  const lx = agent.head.x + left.x;
+  const ly = agent.head.y + left.y;
+  const rx = agent.head.x + right.x;
+  const ry = agent.head.y + right.y;
 
   ctx.fillStyle = "#ffffff";
   ctx.beginPath();
@@ -148,17 +148,17 @@ export function pickCameraTarget(
   followingId: string | null
 ): Point & { followingId: string | null } {
   if (followingId) {
-    const selected = snapshot.snakes.find((snake) => snake.id === followingId);
+    const selected = snapshot.agents.find((a) => a.id === followingId);
     if (selected?.alive) return { ...selected.head, followingId: selected.id };
   }
 
-  const firstLiving = snapshot.snakes.find((snake) => snake.alive);
+  const firstLiving = snapshot.agents.find((a) => a.alive);
   if (firstLiving) return { ...firstLiving.head, followingId: firstLiving.id };
 
   const world = snapshot.world;
   return {
-    x: world.WIDTH / 2,
-    y: world.HEIGHT / 2,
+    x: world.width / 2,
+    y: world.height / 2,
     followingId: null,
   };
 }
@@ -168,10 +168,10 @@ export function advanceCamera(
   viewport: Viewport,
   world: World
 ): void {
-  const halfW = Math.min(viewport.width / 2, world.WIDTH / 2);
-  const halfH = Math.min(viewport.height / 2, world.HEIGHT / 2);
-  camera.x = clamp(camera.x, halfW, world.WIDTH - halfW);
-  camera.y = clamp(camera.y, halfH, world.HEIGHT - halfH);
+  const halfW = Math.min(viewport.width / 2, world.width / 2);
+  const halfH = Math.min(viewport.height / 2, world.height / 2);
+  camera.x = clamp(camera.x, halfW, world.width - halfW);
+  camera.y = clamp(camera.y, halfH, world.height - halfH);
 }
 
 export function drawFrame(
@@ -197,12 +197,12 @@ export function drawFrame(
   drawBackground(ctx, snapshot.world, view);
   drawFood(ctx, snapshot.food, view);
 
-  for (const snake of snapshot.snakes) {
-    if(!snake.alive) continue;
-    drawSnakeBody(ctx, snake, view);
+  for (const agent of snapshot.agents) {
+    if (!agent.alive) continue;
+    drawAgentBody(ctx, agent, view);
 
-    if (inBbox(snake.head, snake.size + 40, view)) {
-      drawEyes(ctx, snake);
+    if (inBbox(agent.head, agent.size + 40, view)) {
+      drawEyes(ctx, agent);
     }
   }
 

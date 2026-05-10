@@ -1,26 +1,42 @@
 "use client";
 
-import type { ConnectionStatus, GameSnapshot } from "@repo/types";
-import { useEffect, useRef, useState } from "react";
+import type { GameSnapshot, ServerMessage } from "@repo/types";
+import { useEffect, useRef } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
-import { spectatingAgentAtom, gameSnapshotAtom } from "@/lib/store";
 import { advanceCamera, drawFrame, pickCameraTarget } from "@/lib/renderer";
+import {
+  spectatingAgentAtom,
+  gameSnapshotAtom,
+  connectionStatusAtom,
+  matchWinnerAtom,
+  gameMetadataAtom,
+  matchStartCountdownAtom,
+} from "@/lib/store";
 
 const MAX_DEVICE_PIXEL_RATIO = 1.5;
 
 const WS_URL = process.env.NEXT_PUBLIC_GAME_WS_URL ?? "ws://localhost:3001";
 
+function countdownSeconds(targetMs: number): number {
+  return Math.max(0, Math.ceil((targetMs - Date.now()) / 1000));
+}
+
 export function Game() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const spectatorRef = useRef<string | null>(null);
-  const spectator = useAtomValue(spectatingAgentAtom);
+
+  const spectatingAgent = useAtomValue(spectatingAgentAtom);
+
   const setSpectatingAgent = useSetAtom(spectatingAgentAtom);
   const setGameSnapshot = useSetAtom(gameSnapshotAtom);
-  const [, setConnectionStatus] = useState<ConnectionStatus>("connecting");
+  const setConnectionStatus = useSetAtom(connectionStatusAtom);
+  const setMatchWinner = useSetAtom(matchWinnerAtom);
+  const setGameMetadata = useSetAtom(gameMetadataAtom);
+  const setMatchStartCountdown = useSetAtom(matchStartCountdownAtom);
 
   useEffect(() => {
-    spectatorRef.current = spectator;
-  }, [spectator])
+    spectatorRef.current = spectatingAgent;
+  }, [spectatingAgent]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -28,6 +44,9 @@ export function Game() {
     if (!canvas || !ctx) return;
 
     let viewport = { width: 0, height: 0, ratio: 0 };
+    let animationFrame = 0;
+    let countdownTimer = 0;
+    let winnerTimer = 0;
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
@@ -45,16 +64,51 @@ export function Game() {
       if (canvas.height !== targetH) canvas.height = targetH;
     };
 
-    const observer = new ResizeObserver(resize);
-    observer.observe(canvas);
-    resize();
+    const cancelRender = () => {
+      if (animationFrame) {
+        window.cancelAnimationFrame(animationFrame);
+        animationFrame = 0;
+      }
+    };
 
-    let animationFrame = 0;
+    const clearCountdown = () => {
+      if (countdownTimer) {
+        window.clearInterval(countdownTimer);
+        countdownTimer = 0;
+      }
+    };
 
-    const renderLatest = (snapshot: GameSnapshot) => {
+    const setCountdownTarget = (target?: string) => {
+      clearCountdown();
+
+      if (!target) {
+        setMatchStartCountdown(null);
+        return;
+      }
+
+      const targetMs = new Date(target).getTime();
+      if (!Number.isFinite(targetMs)) {
+        setMatchStartCountdown(null);
+        return;
+      }
+
+      const update = () => {
+        const seconds = countdownSeconds(targetMs);
+        setMatchStartCountdown(seconds);
+        if (seconds === 0) clearCountdown();
+      };
+
+      update();
+      if (targetMs > Date.now()) {
+        countdownTimer = window.setInterval(update, 1000);
+      }
+    };
+
+    const renderGame = (snapshot: GameSnapshot) => {
       const camera = pickCameraTarget(snapshot, spectatorRef.current);
 
-      if (spectator !== null && camera.followingId !== spectatorRef.current) {
+      if (camera.followingId !== spectatorRef.current) {
+        spectatorRef.current = camera.followingId;
         setSpectatingAgent(camera.followingId);
       }
 
@@ -63,21 +117,55 @@ export function Game() {
     };
 
     setConnectionStatus("connecting");
-
     const socket = new WebSocket(WS_URL);
 
     socket.addEventListener("open", () => {
       setConnectionStatus("connected");
-      socket.send(JSON.stringify({ type: "hello" }));
     });
 
     socket.addEventListener("message", (event) => {
+      if (typeof event.data !== "string") return;
       try {
-        const game = JSON.parse(event.data) as GameSnapshot;
-        setGameSnapshot(game);
-        animationFrame = window.requestAnimationFrame(() => renderLatest(game));
+        const message = JSON.parse(event.data) as ServerMessage;
+
+        switch (message.type) {
+          case "snapshot": {
+            setGameSnapshot(message.data);
+            cancelRender();
+            animationFrame = window.requestAnimationFrame(() => renderGame(message.data));
+            break;
+          }
+          case "status": {
+            setGameMetadata(message.data);
+
+            if (message.data.status === "LIVE") {
+              clearCountdown();
+              setMatchStartCountdown(null);
+            } else {
+              setGameSnapshot(null);
+              ctx.reset();
+              setCountdownTarget(
+                message.data.matchStartsAt ?? message.data.bettingClosesAt
+              );
+            }
+            break;
+          }
+          case "winner": {
+            clearCountdown();
+            setMatchStartCountdown(null);
+            setMatchWinner(message.data);
+
+            if (winnerTimer) window.clearTimeout(winnerTimer);
+            winnerTimer = window.setTimeout(() => {
+              setMatchWinner(null);
+            }, 5000);
+            break;
+          }
+          case "error":
+            break;
+        }
       } catch {
-        return;
+        // Ignore malformed messages
       }
     });
 
@@ -86,15 +174,23 @@ export function Game() {
     });
 
     socket.addEventListener("error", () => {
-      socket.close();
+      socket?.close();
     });
 
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvas);
+    resize();
+
     return () => {
-      window.cancelAnimationFrame(animationFrame);
-      socket.close();
+      cancelRender();
+      clearCountdown();
+      if (winnerTimer) window.clearTimeout(winnerTimer);
+      socket?.close();
       observer.disconnect();
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="block h-full w-full" />;
+  return (
+    <canvas ref={canvasRef} className="block h-full w-full bg-background" />
+  );
 }

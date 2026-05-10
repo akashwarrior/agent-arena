@@ -1,6 +1,12 @@
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
-import type { GamesResponse, GameDetailResponse, BetsResponse, BetPlacementResponse, LeaderboardResponse } from "@/lib/swr-types";
+import type {
+  GamesResponse,
+  GameDetailResponse,
+  BetsResponse,
+  BetPlacementResponse,
+  LeaderboardResponse,
+} from "@/lib/swr-types";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -13,24 +19,18 @@ const fetcher = async (url: string) => {
 
 export function useGames() {
   const { data, error, isLoading, size, setSize, isValidating, mutate } =
-    useSWRInfinite<GamesResponse>(
-      (pageIndex, previousPageData) => {
-        const cursor = pageIndex === 0 ? null : previousPageData?.nextCursor;
-        const params = new URLSearchParams();
-        if (cursor) params.set("cursor", cursor);
-        params.set("limit", "15");
-        return `/api/games?${params.toString()}`;
-      },
-      fetcher,
-    );
+    useSWRInfinite<GamesResponse>((pageIndex, previousPageData) => {
+      const cursor = pageIndex === 0 ? null : previousPageData?.nextCursor;
+      const params = new URLSearchParams();
+      if (cursor) params.set("cursor", cursor);
+      params.set("limit", "15");
+      return `/api/games?${params.toString()}`;
+    }, fetcher);
 
   const games = data ? data.flatMap((page) => page.games) : [];
-  const hasMore = data
-    ? data[data.length - 1]?.nextCursor !== null
-    : true;
+  const hasMore = data ? data[data.length - 1]?.nextCursor !== null : true;
   const isLoadingMore =
-    isLoading ||
-    (size > 0 && data && typeof data[size - 1] === "undefined");
+    isLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
 
   return {
     games,
@@ -62,23 +62,18 @@ export function useGameDetail(gameId: string | null) {
 
 export function useBets(enabled = true) {
   const { data, error, isLoading, size, setSize, isValidating, mutate } =
-    useSWRInfinite<BetsResponse>(
-      (pageIndex, previousPageData) => {
-        if (!enabled) return null;
-        if (previousPageData && !previousPageData.nextCursor) return null;
-        const cursor = pageIndex === 0 ? null : previousPageData?.nextCursor;
-        const params = new URLSearchParams();
-        if (cursor) params.set("cursor", cursor);
-        params.set("limit", "20");
-        return `/api/bets?${params.toString()}`;
-      },
-      fetcher,
-    );
+    useSWRInfinite<BetsResponse>((pageIndex, previousPageData) => {
+      if (!enabled) return null;
+      if (previousPageData && !previousPageData.nextCursor) return null;
+      const cursor = pageIndex === 0 ? null : previousPageData?.nextCursor;
+      const params = new URLSearchParams();
+      if (cursor) params.set("cursor", cursor);
+      params.set("limit", "20");
+      return `/api/bets?${params.toString()}`;
+    }, fetcher);
 
   const bets = data ? data.flatMap((page) => page.bets) : [];
-  const hasMore = data
-    ? data[data.length - 1]?.nextCursor !== null
-    : true;
+  const hasMore = data ? data[data.length - 1]?.nextCursor !== null : true;
 
   return {
     bets,
@@ -98,7 +93,7 @@ export function useBets(enabled = true) {
 export function useLeaderboard() {
   const { data, error, isLoading, mutate } = useSWR<LeaderboardResponse>(
     "/api/leaderboard",
-    fetcher,
+    fetcher
   );
 
   return {
@@ -122,7 +117,9 @@ export async function placeBet(
   });
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: "Failed to place bet" }));
+    const error = await res
+      .json()
+      .catch(() => ({ error: "Failed to place bet" }));
     throw new Error(error.error || `HTTP ${res.status}`);
   }
 

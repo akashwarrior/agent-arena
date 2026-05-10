@@ -9,9 +9,14 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get("limit") || String(PAGE_SIZE));
 
   const games = await prisma.game.findMany({
+    where: {
+      status: {
+        in: ["LIVE", "UPCOMING", "OPEN"],
+      },
+    },
     take: limit + 1,
     ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: "asc" },
     include: {
       agents: {
         include: {

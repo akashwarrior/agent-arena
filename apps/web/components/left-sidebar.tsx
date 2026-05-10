@@ -6,7 +6,6 @@ import { leftSidebarOpenAtom } from "@/lib/store";
 import { useGames, useBets, useGameDetail, placeBet } from "@/lib/swr";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
   ChevronRight,
@@ -26,51 +25,31 @@ type GameWithAgents = Game & { agents: Agent[] };
 function StatusBadge({ status }: { status: Game["status"] }) {
   if (status === "LIVE") {
     return (
-      <span className="text-label text-accent inline-flex items-center gap-2">
+      <span className="text-label inline-flex items-center gap-2 text-accent">
         <span className="live-dot" />
         LIVE
       </span>
     );
   }
   if (status === "OPEN") {
-    return (
-      <span className="text-label text-success">
-        OPEN
-      </span>
-    );
+    return <span className="text-label text-success">OPEN</span>;
   }
   if (status === "UPCOMING") {
-    return (
-      <span className="text-label text-muted-foreground">
-        UPCOMING
-      </span>
-    );
+    return <span className="text-label text-muted-foreground">UPCOMING</span>;
   }
   if (status === "LOCKED") {
-    return (
-      <span className="text-label text-warning">
-        LOCKED
-      </span>
-    );
+    return <span className="text-label text-warning">LOCKED</span>;
   }
   if (status === "CANCELLED") {
-    return (
-      <span className="text-label text-muted-foreground">
-        CANCELLED
-      </span>
-    );
+    return <span className="text-label text-muted-foreground">CANCELLED</span>;
   }
-  return (
-    <span className="text-label text-muted-foreground">
-      ENDED
-    </span>
-  );
+  return <span className="text-label text-muted-foreground">ENDED</span>;
 }
 
 function GameRow({
   game,
   onClick,
-  hasBet
+  hasBet,
 }: {
   game: GameWithAgents;
   onClick: () => void;
@@ -80,34 +59,42 @@ function GameRow({
     <button
       type="button"
       onClick={onClick}
-      className="w-full text-left px-4 py-3 hover:bg-secondary group border-b border-border"
+      className="group w-full border-b border-border px-4 py-3 text-left hover:bg-secondary"
     >
       <div className="flex items-start justify-between">
-        <div className="flex flex-col gap-1 min-w-0">
+        <div className="flex min-w-0 flex-col gap-1">
           <div className="flex items-center gap-2">
-            <span className="text-subheading text-foreground truncate">
+            <span className="text-subheading truncate text-foreground">
               {game.name}
             </span>
             {hasBet && (
               <span className="size-1.5 rounded-full bg-muted-foreground" />
             )}
           </div>
-          <div className="flex items-center gap-2 text-label text-muted-foreground">
+          <div className="text-label flex items-center gap-2 text-muted-foreground">
             <span>R{game.id.slice(0, 6).toUpperCase()}</span>
             <span className="text-border">·</span>
             <span>{game.totalPool.toFixed(1)} SOL</span>
           </div>
         </div>
-        <div className="flex items-center gap-3 shrink-0 ml-3">
+        <div className="ml-3 flex shrink-0 items-center gap-3">
           <StatusBadge status={game.status} />
-          <ChevronRight className="size-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+          <ChevronRight className="size-3.5 text-muted-foreground transition-colors group-hover:text-foreground" />
         </div>
       </div>
     </button>
   );
 }
 
-function LoadMoreTrigger({ onLoadMore, hasMore, isLoading }: { onLoadMore: () => void; hasMore: boolean; isLoading: boolean }) {
+function LoadMoreTrigger({
+  onLoadMore,
+  hasMore,
+  isLoading,
+}: {
+  onLoadMore: () => void;
+  hasMore: boolean;
+  isLoading: boolean;
+}) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -143,11 +130,11 @@ function GamesList({
   if (isLoading && !games.length) {
     return (
       <div className="flex flex-col">
-        <div className="px-4 py-2.5 border-b border-border bg-secondary">
+        <div className="border-b border-border bg-secondary px-4 py-2.5">
           <span className="text-label text-muted-foreground">SELECT ARENA</span>
         </div>
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="size-4 text-muted-foreground animate-spin" />
+          <Loader2 className="size-4 animate-spin text-muted-foreground" />
         </div>
       </div>
     );
@@ -156,7 +143,7 @@ function GamesList({
   if (error && !games.length) {
     return (
       <div className="flex flex-col">
-        <div className="px-4 py-2.5 border-b border-border bg-secondary">
+        <div className="border-b border-border bg-secondary px-4 py-2.5">
           <span className="text-label text-muted-foreground">SELECT ARENA</span>
         </div>
         <div className="flex items-center justify-center py-16">
@@ -167,8 +154,8 @@ function GamesList({
   }
 
   return (
-    <div className="flex flex-col">
-      <div className="px-4 py-2.5 border-b border-border bg-secondary">
+    <div className="flex h-full flex-col overflow-y-auto">
+      <div className="border-b border-border bg-secondary px-4 py-2.5">
         <span className="text-label text-muted-foreground">SELECT ARENA</span>
       </div>
       {games.map((game) => (
@@ -180,11 +167,15 @@ function GamesList({
         />
       ))}
       {hasMore && (
-        <LoadMoreTrigger onLoadMore={loadMore} hasMore={hasMore} isLoading={isLoadingMore} />
+        <LoadMoreTrigger
+          onLoadMore={loadMore}
+          hasMore={hasMore}
+          isLoading={isLoadingMore}
+        />
       )}
       {isLoadingMore && (
         <div className="flex items-center justify-center py-4">
-          <Loader2 className="size-3 text-muted-foreground animate-spin" />
+          <Loader2 className="size-3 animate-spin text-muted-foreground" />
         </div>
       )}
       {!hasMore && games.length > 0 && (
@@ -218,20 +209,25 @@ function AgentCard({
       type="button"
       disabled={!canBet}
       onClick={onSelect}
-      className={`w-full text-left px-3 py-3 transition-percussive ${active
-        ? "bg-secondary border border-border"
-        : "border border-transparent hover:bg-secondary/50"
-        } ${!canBet ? "cursor-default opacity-60" : ""}`}
+      className={`transition-percussive w-full px-3 py-3 text-left ${
+        active
+          ? "border border-border bg-secondary"
+          : "border border-transparent hover:bg-secondary/50"
+      } ${!canBet ? "cursor-default opacity-60" : ""}`}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className={`size-2.5 ${active ? "bg-foreground" : "bg-muted-foreground"}`} />
-          <span className="text-body text-foreground uppercase tracking-wide">
+          <div
+            className={`size-2.5 ${active ? "bg-foreground" : "bg-muted-foreground"}`}
+          />
+          <span className="text-body tracking-wide text-foreground uppercase">
             {agent.name}
           </span>
         </div>
         {isWinner && (
-          <span className="text-label text-success border border-success px-2 py-0.5">WINNER</span>
+          <span className="text-label border border-success px-2 py-0.5 text-success">
+            WINNER
+          </span>
         )}
       </div>
     </button>
@@ -253,15 +249,15 @@ function BetInputInline({
   const valid = !isNaN(num) && num > 0;
 
   return (
-    <div className="px-3 pb-3 pt-1">
-      <div className="flex items-center gap-2 p-2 border border-border bg-background">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <Target className="size-3.5 text-muted-foreground shrink-0" />
+    <div className="px-3 pt-1 pb-3">
+      <div className="flex items-center gap-2 border border-border bg-background p-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <Target className="size-3.5 shrink-0 text-muted-foreground" />
           <Input
             type="number"
             placeholder="0.00"
             autoFocus
-            className="h-8 rounded-none border-0 bg-transparent text-data text-foreground placeholder:text-muted-foreground focus-visible:ring-0 px-0"
+            className="text-data h-8 rounded-none border-0 bg-transparent px-0 text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
             value={value}
             onChange={(e) => onChange(e.target.value)}
             min="0"
@@ -270,18 +266,14 @@ function BetInputInline({
               if (e.key === "Enter" && valid) onSubmit();
             }}
           />
-          <span className="text-label text-muted-foreground shrink-0">SOL</span>
+          <span className="text-label shrink-0 text-muted-foreground">SOL</span>
         </div>
         <Button
           disabled={!valid || submitting}
-          className="h-8 rounded-full bg-primary text-primary-foreground text-label px-4 hover:bg-primary/90 disabled:opacity-50 shrink-0"
+          className="text-label h-8 shrink-0 rounded-full bg-primary px-4 text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           onClick={onSubmit}
         >
-          {submitting ? (
-            <Loader2 className="size-3 animate-spin" />
-          ) : (
-            "PLACE"
-          )}
+          {submitting ? <Loader2 className="size-3 animate-spin" /> : "PLACE"}
         </Button>
       </div>
     </div>
@@ -307,8 +299,12 @@ function GameDetail({
   const displayGame = game || initialGame;
   const displayBet = userBet || initialBet;
 
-  const canBet = (displayGame.status === "OPEN" || displayGame.status === "UPCOMING") && !displayBet;
-  const selectedAgentData = displayGame?.agents.find((a) => a.id === selectedAgent);
+  const canBet =
+    (displayGame.status === "OPEN" || displayGame.status === "UPCOMING") &&
+    !displayBet;
+  const selectedAgentData = displayGame?.agents.find(
+    (a) => a.id === selectedAgent
+  );
 
   const handlePlaceBet = async () => {
     if (!selectedAgent || !selectedAgentData) return;
@@ -317,7 +313,12 @@ function GameDetail({
 
     setSubmitting(true);
     try {
-      await placeBet(displayGame.id, selectedAgent, amount, "wallet-placeholder");
+      await placeBet(
+        displayGame.id,
+        selectedAgent,
+        amount,
+        "wallet-placeholder"
+      );
       toast.success("Bet placed", {
         description: `${betAmount} SOL on ${selectedAgentData.name}`,
         duration: 3000,
@@ -339,7 +340,7 @@ function GameDetail({
   if (isLoading && !game) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="size-4 text-muted-foreground animate-spin" />
+        <Loader2 className="size-4 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -347,11 +348,11 @@ function GameDetail({
   return (
     <div className="flex flex-col">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-border">
+      <div className="border-b border-border px-4 py-3">
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-2 text-label text-muted-foreground hover:text-foreground transition-percussive mb-4"
+          className="text-label transition-percussive mb-4 flex items-center gap-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-3" />
           BACK
@@ -362,57 +363,71 @@ function GameDetail({
             <h2 className="text-display-sm text-foreground">
               {displayGame.name}
             </h2>
-            <div className="flex items-center gap-3 mt-1.5">
+            <div className="mt-1.5 flex items-center gap-3">
               <StatusBadge status={displayGame.status} />
-              <span className="text-label text-muted-foreground">R{displayGame.id.slice(0, 6).toUpperCase()}</span>
+              <span className="text-label text-muted-foreground">
+                R{displayGame.id.slice(0, 6).toUpperCase()}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Hero Metric */}
-      <div className="px-4 py-6 border-b border-border bg-secondary">
-        <span className="text-label text-muted-foreground block mb-2">PRIZE POOL</span>
-        <span className="text-display-lg text-foreground text-data">
-          {displayGame.totalPool.toFixed(1)}<span className="text-label text-muted-foreground ml-2">SOL</span>
+      <div className="border-b border-border bg-secondary px-4 py-6">
+        <span className="text-label mb-2 block text-muted-foreground">
+          PRIZE POOL
+        </span>
+        <span className="text-display-lg text-data text-foreground">
+          {displayGame.totalPool.toFixed(1)}
+          <span className="text-label ml-2 text-muted-foreground">SOL</span>
         </span>
       </div>
 
       {/* Status Messages */}
       {displayGame.status === "LIVE" && (
-        <div className="px-4 py-2.5 border-b border-border flex items-center gap-2">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
           <Lock className="size-3 text-muted-foreground" />
-          <span className="text-label text-muted-foreground">BETTING LOCKED — MATCH IN PROGRESS</span>
+          <span className="text-label text-muted-foreground">
+            BETTING LOCKED — MATCH IN PROGRESS
+          </span>
         </div>
       )}
 
       {displayBet && (
-        <div className="px-4 py-2.5 border-b border-border bg-card flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-border bg-card px-4 py-2.5">
           <div className="flex items-center gap-2">
             <span className="size-1.5 rounded-full bg-success" />
             <span className="text-label text-foreground">
-              {displayBet.amount.toFixed(2)} SOL ON {displayBet.agentId.toUpperCase()}
+              {displayBet.amount.toFixed(2)} SOL ON{" "}
+              {displayBet.agentId.toUpperCase()}
             </span>
           </div>
-          <span className="text-label text-muted-foreground">[{displayBet.status}]</span>
+          <span className="text-label text-muted-foreground">
+            [{displayBet.status}]
+          </span>
         </div>
       )}
 
       {displayGame.status === "ENDED" && displayGame.winnerAgentId && (
-        <div className="px-4 py-2.5 border-b border-border bg-foreground text-background">
-          <span className="text-label">WINNER: {displayGame.winnerAgentId.toUpperCase()}</span>
+        <div className="border-b border-border bg-foreground px-4 py-2.5 text-background">
+          <span className="text-label">
+            WINNER: {displayGame.winnerAgentId.toUpperCase()}
+          </span>
         </div>
       )}
 
       {displayGame.status === "CANCELLED" && (
-        <div className="px-4 py-2.5 border-b border-border">
-          <span className="text-label text-muted-foreground">MATCH CANCELLED — ALL BETS REFUNDED</span>
+        <div className="border-b border-border px-4 py-2.5">
+          <span className="text-label text-muted-foreground">
+            MATCH CANCELLED — ALL BETS REFUNDED
+          </span>
         </div>
       )}
 
       {/* Agent Roster */}
       <div className="flex flex-col">
-        <div className="px-4 py-2.5 border-b border-border flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
           <span className="text-label text-muted-foreground">
             {canBet ? "SELECT CONTESTANT" : "ROSTER"}
           </span>
@@ -458,16 +473,17 @@ function GameDetail({
 }
 
 function MyBetsView() {
-  const { bets, hasMore, isLoading, isLoadingMore, error, loadMore } = useBets();
+  const { bets, hasMore, isLoading, isLoadingMore, error, loadMore } =
+    useBets();
 
   if (isLoading && !bets.length) {
     return (
       <div className="flex flex-col">
-        <div className="px-4 py-2.5 border-b border-border bg-secondary">
+        <div className="border-b border-border bg-secondary px-4 py-2.5">
           <span className="text-label text-muted-foreground">BET HISTORY</span>
         </div>
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="size-4 text-muted-foreground animate-spin" />
+          <Loader2 className="size-4 animate-spin text-muted-foreground" />
         </div>
       </div>
     );
@@ -476,7 +492,7 @@ function MyBetsView() {
   if (error && !bets.length) {
     return (
       <div className="flex flex-col">
-        <div className="px-4 py-2.5 border-b border-border bg-secondary">
+        <div className="border-b border-border bg-secondary px-4 py-2.5">
           <span className="text-label text-muted-foreground">BET HISTORY</span>
         </div>
         <div className="flex items-center justify-center py-16">
@@ -489,10 +505,10 @@ function MyBetsView() {
   if (!bets.length) {
     return (
       <div className="flex flex-col">
-        <div className="px-4 py-2.5 border-b border-border bg-secondary">
+        <div className="border-b border-border bg-secondary px-4 py-2.5">
           <span className="text-label text-muted-foreground">BET HISTORY</span>
         </div>
-        <div className="py-16 flex items-center justify-center">
+        <div className="flex items-center justify-center py-16">
           <p className="text-label text-muted-foreground">[ NO BETS ]</p>
         </div>
       </div>
@@ -507,7 +523,7 @@ function MyBetsView() {
 
   return (
     <div className="flex flex-col">
-      <div className="px-4 py-2.5 border-b border-border bg-secondary">
+      <div className="border-b border-border bg-secondary px-4 py-2.5">
         <span className="text-label text-muted-foreground">BET HISTORY</span>
       </div>
 
@@ -515,10 +531,10 @@ function MyBetsView() {
         {bets.map((bet) => (
           <div
             key={bet.id}
-            className="flex items-center justify-between px-4 py-3 border-b border-border hover:bg-secondary"
+            className="flex items-center justify-between border-b border-border px-4 py-3 hover:bg-secondary"
           >
             <div className="flex flex-col gap-0.5">
-              <span className="text-body text-foreground uppercase tracking-wide">
+              <span className="text-body tracking-wide text-foreground uppercase">
                 {bet.agent.name?.toUpperCase() || bet.agentId.toUpperCase()}
               </span>
               <span className="text-label text-muted-foreground">
@@ -531,15 +547,21 @@ function MyBetsView() {
               </span>
               <div className="flex items-center gap-2">
                 {bet.status === "WON" && bet.payout && (
-                  <span className="text-label text-success text-data">
+                  <span className="text-label text-data text-success">
                     +{(bet.payout - bet.amount).toFixed(2)}
                   </span>
                 )}
-                <span className={`text-label ${bet.status === "WON" ? "text-success" :
-                  bet.status === "LOST" ? "text-muted-foreground" :
-                    bet.status === "REFUNDED" ? "text-warning" :
-                      "text-foreground"
-                  }`}>
+                <span
+                  className={`text-label ${
+                    bet.status === "WON"
+                      ? "text-success"
+                      : bet.status === "LOST"
+                        ? "text-muted-foreground"
+                        : bet.status === "REFUNDED"
+                          ? "text-warning"
+                          : "text-foreground"
+                  }`}
+                >
                   [{bet.status}]
                 </span>
               </div>
@@ -549,26 +571,35 @@ function MyBetsView() {
       </div>
 
       {hasMore && (
-        <LoadMoreTrigger onLoadMore={loadMore} hasMore={hasMore} isLoading={isLoadingMore} />
+        <LoadMoreTrigger
+          onLoadMore={loadMore}
+          hasMore={hasMore}
+          isLoading={isLoadingMore}
+        />
       )}
       {isLoadingMore && (
         <div className="flex items-center justify-center py-4">
-          <Loader2 className="size-3 text-muted-foreground animate-spin" />
+          <Loader2 className="size-3 animate-spin text-muted-foreground" />
         </div>
       )}
 
-      <div className="px-4 py-3 border-t border-border bg-card">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-label text-muted-foreground">TOTAL WAGERED</span>
+      <div className="border-t border-border bg-card px-4 py-3">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-label text-muted-foreground">
+            TOTAL WAGERED
+          </span>
           <span className="text-data text-foreground">
             {totalWagered.toFixed(2)} SOL
           </span>
         </div>
-        <Separator className="bg-border my-2" />
+        <Separator className="my-2 bg-border" />
         <div className="flex items-center justify-between">
           <span className="text-label text-muted-foreground">NET RESULT</span>
-          <span className={`text-data ${pnl >= 0 ? "text-success" : "text-muted-foreground"}`}>
-            {pnl >= 0 ? "+" : ""}{pnl.toFixed(2)} SOL
+          <span
+            className={`text-data ${pnl >= 0 ? "text-success" : "text-muted-foreground"}`}
+          >
+            {pnl >= 0 ? "+" : ""}
+            {pnl.toFixed(2)} SOL
           </span>
         </div>
       </div>
@@ -576,7 +607,7 @@ function MyBetsView() {
   );
 }
 
-export function LeftSidebarContent({ tab }: { tab: "games" | "bets"; }) {
+export function LeftSidebarContent({ tab }: { tab: "games" | "bets" }) {
   const [selectedGame, setSelectedGame] = useState<GameWithAgents | null>(null);
   const [userBetGameIds, setUserBetGameIds] = useState<Set<string>>(new Set());
 
@@ -586,26 +617,22 @@ export function LeftSidebarContent({ tab }: { tab: "games" | "bets"; }) {
     }
   }, [selectedGame]);
 
-  return (
-    <ScrollArea className="h-full bg-card">
-      {tab === "games" ? (
-        selectedGame ? (
-          <GameDetail
-            game={selectedGame}
-            onBack={() => setSelectedGame(null)}
-            initialBet={null}
-            onBetPlaced={handleBetPlaced}
-          />
-        ) : (
-          <GamesList
-            onSelectGame={setSelectedGame}
-            userBetGameIds={userBetGameIds}
-          />
-        )
-      ) : (
-        <MyBetsView />
-      )}
-    </ScrollArea>
+  return tab === "games" ? (
+    selectedGame ? (
+      <GameDetail
+        game={selectedGame}
+        onBack={() => setSelectedGame(null)}
+        initialBet={null}
+        onBetPlaced={handleBetPlaced}
+      />
+    ) : (
+      <GamesList
+        onSelectGame={setSelectedGame}
+        userBetGameIds={userBetGameIds}
+      />
+    )
+  ) : (
+    <MyBetsView />
   );
 }
 
@@ -613,34 +640,38 @@ export function LeftSidebar() {
   const [isSidebarOpen] = useAtom(leftSidebarOpenAtom);
 
   return (
-    <div className={`relative h-full transition-all duration-0 ${!isSidebarOpen ? "w-0 overflow-hidden" : "w-85"}`}>
-      <aside className="flex h-full w-85 flex-col border-r border-border bg-card">
-        <Tabs defaultValue="games" className="w-full flex flex-col h-full">
-          <TabsList className="w-full bg-secondary p-0 h-10 border-b border-border rounded-none">
-            <TabsTrigger
-              value="games"
-              className="flex-1 h-full rounded-none text-label data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-foreground text-muted-foreground hover:text-foreground"
-            >
-              GAMES
-            </TabsTrigger>
-            <TabsTrigger
-              value="bets"
-              className="flex-1 h-full rounded-none text-label data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-foreground text-muted-foreground hover:text-foreground"
-            >
-              MY BETS
-            </TabsTrigger>
+    <div
+      className={`relative h-full transition-all duration-0 ${!isSidebarOpen ? "w-0 overflow-hidden" : "w-85"}`}
+    >
+      <aside className="flex h-full w-85 flex-col overflow-hidden border-r border-border bg-card">
+        <Tabs
+          defaultValue="games"
+          className="flex w-full flex-1 flex-col overflow-hidden"
+        >
+          <TabsList className="h-10 w-full rounded-none border-b border-border bg-secondary p-0">
+            {["GAMES", "MY BETS"].map((tab) => (
+              <TabsTrigger
+                key={tab}
+                value={tab.toLocaleLowerCase().split(" ").join("_")}
+                className="text-label h-full flex-1 rounded-none text-muted-foreground hover:text-foreground data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground"
+              >
+                {tab}
+              </TabsTrigger>
+            ))}
           </TabsList>
-          <TabsContent value="games" className="flex-1 m-0 data-[state=inactive]:hidden">
+
+          <TabsContent value="games" className="h-full overflow-hidden">
             <LeftSidebarContent tab="games" />
           </TabsContent>
-          <TabsContent value="bets" className="flex-1 m-0 data-[state=inactive]:hidden">
+
+          <TabsContent value="my_bets" className="h-full overflow-hidden">
             <LeftSidebarContent tab="bets" />
           </TabsContent>
         </Tabs>
 
-        <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-secondary">
+        <div className="flex items-center justify-between border-t border-border bg-secondary px-4 py-2.5">
           <div className="flex items-center gap-2">
-            <div className="size-1.5 bg-success rounded-full" />
+            <div className="size-1.5 rounded-full bg-success" />
             <span className="text-label text-foreground">MAINNET</span>
           </div>
           <span className="text-label text-muted-foreground">v1.0</span>
@@ -656,12 +687,12 @@ export function LeftSidebarToggle() {
   return (
     <button
       onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-      className="absolute top-3 left-3 z-50 p-1.5 bg-card border border-border hover:bg-secondary"
+      className="absolute top-3 left-3 z-50 border border-border bg-card p-1.5 text-foreground hover:bg-secondary"
     >
       {isSidebarOpen ? (
-        <PanelLeftClose className="size-3.5 text-foreground" />
+        <PanelLeftClose className="size-3.5" />
       ) : (
-        <PanelLeftOpen className="size-3.5 text-foreground" />
+        <PanelLeftOpen className="size-3.5" />
       )}
     </button>
   );

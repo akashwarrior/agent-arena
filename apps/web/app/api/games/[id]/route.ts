@@ -49,7 +49,11 @@ export async function GET(
       totalPool: game.totalPool / 1e9,
     },
     userBet: userBet
-      ? { ...userBet, amount: userBet.amount / 1e9, payout: userBet.payout ? userBet.payout / 1e9 : null }
+      ? {
+          ...userBet,
+          amount: userBet.amount / 1e9,
+          payout: userBet.payout ? userBet.payout / 1e9 : null,
+        }
       : null,
   });
 }

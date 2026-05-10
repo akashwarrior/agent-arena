@@ -13,6 +13,7 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@repo/types": "workspace:*"
+    "@repo/types": "workspace:*",
+    "@repo/db": "workspace:*"
   }
 }

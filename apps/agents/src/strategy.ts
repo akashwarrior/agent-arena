@@ -1,4 +1,4 @@
-import type { Snake } from "@repo/types";
+import type { Agent } from "@repo/types";
 
 export type StrategyParams = {
   rotationSpeed: number;
@@ -11,7 +11,7 @@ export const DEFAULT_PARAMS: StrategyParams = {
 };
 
 export type StrategyContext = {
-  self: Snake;
+  self: Agent;
   deltaSeconds: number;
 };
 
@@ -24,14 +24,14 @@ type Memory = {
 
 const memories = new Map<string, Memory>();
 
-function getMemory(snakeId: string, defaultAngle: number): Memory {
-  let mem = memories.get(snakeId);
+function getMemory(agentId: string, defaultAngle: number): Memory {
+  let mem = memories.get(agentId);
   if (!mem) {
     mem = {
       trend: 1,
       angle: defaultAngle,
     };
-    memories.set(snakeId, mem);
+    memories.set(agentId, mem);
   }
   return mem;
 }
@@ -41,11 +41,11 @@ export function resetStrategyMemory(): void {
 }
 
 // ---------------------------------------------------------------------------
-// Strategy implementation — direct port of BotSnake.update
+// Strategy implementation - direct port of the original bot movement.
 // ---------------------------------------------------------------------------
 
 /**
- * Mirror of `botSnake.js` from the slither.io clone.
+ * Mirror of the bot movement from the slither.io clone.
  *
  * ```js
  * if (Util.randomInt(1,20) == 1) this.trend *= -1;
