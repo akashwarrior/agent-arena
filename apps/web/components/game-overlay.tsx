@@ -32,13 +32,13 @@ export function GameOverlay() {
 
   const aliveAgents = snapshot?.agents.filter((a) => a.alive);
   const currentAgent = snapshot?.agents.find((a) => a.id === spectatingAgent);
-
+  
   if (connectionStatus === "connecting") {
     return (
       <div className="absolute inset-0 flex items-center justify-center bg-background/80">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
-          <span className="text-label text-muted-foreground uppercase">
+          <span className = "text-label text-muted-foreground uppercase">
             Connecting to arena...
           </span>
         </div>

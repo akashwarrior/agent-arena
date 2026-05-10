@@ -24,8 +24,10 @@ function countdownSeconds(targetMs: number): number {
 export function Game() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const spectatorRef = useRef<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   const spectatingAgent = useAtomValue(spectatingAgentAtom);
+  const gameMetadata = useAtomValue(gameMetadataAtom);
 
   const setSpectatingAgent = useSetAtom(spectatingAgentAtom);
   const setGameSnapshot = useSetAtom(gameSnapshotAtom);
@@ -37,6 +39,22 @@ export function Game() {
   useEffect(() => {
     spectatorRef.current = spectatingAgent;
   }, [spectatingAgent]);
+
+  useEffect(() => {
+    const handleInteraction = () => {
+      if (gameMetadata?.status === "LIVE" && audioRef.current?.paused) {
+        audioRef.current.play().catch(() => {});
+      }
+    };
+
+    window.addEventListener("click", handleInteraction);
+    window.addEventListener("keydown", handleInteraction);
+
+    return () => {
+      window.removeEventListener("click", handleInteraction);
+      window.removeEventListener("keydown", handleInteraction);
+    };
+  }, [gameMetadata?.status]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -136,17 +154,29 @@ export function Game() {
             break;
           }
           case "status": {
+            setMatchWinner(null);
             setGameMetadata(message.data);
 
             if (message.data.status === "LIVE") {
               clearCountdown();
               setMatchStartCountdown(null);
+              
+              if (audioRef.current) {
+                if (audioRef.current.paused) {
+                  audioRef.current.currentTime = 0;
+                  audioRef.current.play().catch(() => {});
+                }
+              }
             } else {
               setGameSnapshot(null);
               ctx.reset();
               setCountdownTarget(
                 message.data.matchStartsAt ?? message.data.bettingClosesAt
               );
+
+              if (audioRef.current) {
+                audioRef.current.pause();
+              }
             }
             break;
           }
@@ -154,6 +184,10 @@ export function Game() {
             clearCountdown();
             setMatchStartCountdown(null);
             setMatchWinner(message.data);
+
+            if (audioRef.current) {
+              audioRef.current.pause();
+            }
 
             if (winnerTimer) window.clearTimeout(winnerTimer);
             winnerTimer = window.setTimeout(() => {
@@ -191,6 +225,9 @@ export function Game() {
   }, []);
 
   return (
-    <canvas ref={canvasRef} className="block h-full w-full bg-background" />
+    <>
+      <canvas ref={canvasRef} className="block h-full w-full bg-background" />
+      <audio ref={audioRef} src="/music.mp3" loop />
+    </>
   );
 }
