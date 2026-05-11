@@ -403,7 +403,7 @@ export default function HomePage() {
               {MATCHES.map((match) => (
                 <HoverCard
                   key={match.id}
-                  className="flex flex-col gap-6 border border-border bg-card p-7 transition-colors hover:border-foreground/30"
+                  className="flex rounded-lg flex-col gap-6 border border-border bg-card p-7 transition-colors hover:border-foreground/30"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 flex-col gap-1">
@@ -417,7 +417,7 @@ export default function HomePage() {
                     <div
                       className={`border border-border px-2 py-1 text-[11px] tracking-[0.2em] uppercase ${
                         match.status === "LIVE"
-                          ? "text-destructive"
+                          ? "text-green"
                           : match.status === "OPEN"
                             ? "text-success"
                             : "text-muted-foreground"
