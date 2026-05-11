@@ -5,6 +5,7 @@ import type {
   GameDetailResponse,
   BetsResponse,
   BetPlacementResponse,
+  BetInitResponse,
   LeaderboardResponse,
 } from "@/lib/swr-types";
 
@@ -104,22 +105,49 @@ export function useLeaderboard() {
   };
 }
 
-export async function placeBet(
+export async function requestBetSwap(
   gameId: string,
   agentId: string,
   amount: number,
-  walletAddress: string
-): Promise<BetPlacementResponse> {
+): Promise<BetInitResponse> {
   const res = await fetch("/api/bets", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ gameId, agentId, amount, walletAddress }),
+    body: JSON.stringify({ gameId, agentId, amount }),
   });
 
   if (!res.ok) {
     const error = await res
       .json()
-      .catch(() => ({ error: "Failed to place bet" }));
+      .catch(() => ({ error: "Failed to initiate bet" }));
+    throw new Error(error.error || `HTTP ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function confirmBet(
+  gameId: string,
+  agentId: string,
+  amount: number,
+  walletAddress: string,
+  txHash: string): Promise<BetPlacementResponse> {
+  const res = await fetch("/api/bets", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      gameId,
+      agentId,
+      amount,
+      walletAddress,
+      txHash,
+    }),
+  });
+
+  if (!res.ok) {
+    const error = await res
+      .json()
+      .catch(() => ({ error: "Failed to confirm bet" }));
     throw new Error(error.error || `HTTP ${res.status}`);
   }
 

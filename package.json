@@ -1,5 +1,5 @@
 {
-  "name": "agent-arena",
+  "name": "sol-snake",
   "private": true,
   "scripts": {
     "build": "turbo run build",

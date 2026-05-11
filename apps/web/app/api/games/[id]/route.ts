@@ -46,13 +46,13 @@ export async function GET(
     game: {
       ...game,
       agents: game.agents.map((ag) => ag.agent),
-      totalPool: game.totalPool / 1e9,
+      totalPool: game.totalPool / 1e6,
     },
     userBet: userBet
       ? {
           ...userBet,
-          amount: userBet.amount / 1e9,
-          payout: userBet.payout ? userBet.payout / 1e9 : null,
+          amount: userBet.amount / 1e6,
+          payout: userBet.payout ? userBet.payout / 1e6 : null,
         }
       : null,
   });

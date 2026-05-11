@@ -163,7 +163,7 @@ export function RightSidebarContent() {
               {isLive && (
                 <span className="inline-flex items-center gap-1.5">
                   <span className="live-dot" />
-                  <span className="text-label text-accent">LIVE</span>
+                  <span className="text-label text-destructive">LIVE</span>
                 </span>
               )}
               <span className="text-label text-muted-foreground">
@@ -179,7 +179,7 @@ export function RightSidebarContent() {
           </span>
           <span className="text-display-md text-data text-foreground">
             {gameMetadata.pool.toFixed(1)}
-            <span className="text-label ml-2 text-muted-foreground">SOL</span>
+            <span className="text-label ml-2 text-muted-foreground">USDC</span>
           </span>
         </div>
 

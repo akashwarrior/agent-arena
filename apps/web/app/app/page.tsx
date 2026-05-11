@@ -1,29 +1,28 @@
+import type { GamesResponse } from "@/lib/swr-types";
+import { unstable_serialize } from "swr/infinite";
+import { prisma } from "@repo/db";
+import { SWRConfig } from "swr";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 import { Provider } from "jotai";
 import { Game } from "@/components/game";
 import { Navbar } from "@/components/navbar";
 import { GameOverlay } from "@/components/game-overlay";
+import { GameStatusBar } from "@/components/game-status-bar";
+import { RightSidebar, RightSidebarContent } from "@/components/right-sidebar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   LeftSidebar,
   LeftSidebarContent,
   LeftSidebarToggle,
 } from "@/components/left-sidebar";
-import { RightSidebar, RightSidebarContent } from "@/components/right-sidebar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { prisma } from "@repo/db";
-import type { GamesResponse, GameWithAgents } from "@/lib/swr-types";
-import { SWRConfig } from "swr";
-import { unstable_serialize } from "swr/infinite";
 
-async function getInitialData() {
+async function getInitialGames() {
   try {
     const games = await prisma.game.findMany({
-      where: {
-        status: {
-          in: ["LIVE", "UPCOMING", "OPEN"],
-        },
-      },
       take: 16,
-      orderBy: { startedAt: "asc" },
+      orderBy: { startedAt: "desc" },
       include: {
         agents: {
           include: {
@@ -44,34 +43,33 @@ async function getInitialData() {
       games: games.map((game) => ({
         ...game,
         agents: game.agents.map((ag) => ag.agent),
-        totalPool: game.totalPool / 1e9,
+        totalPool: game.totalPool / 1e6,
       })),
       nextCursor,
     };
 
-    const liveGame =
-      normalizedGames.games.find((g) => g.status === "LIVE") ||
-      normalizedGames.games.find((g) => g.status === "OPEN") ||
-      null;
-
-    return {
-      initialGames: [normalizedGames],
-      activeGame: liveGame as GameWithAgents | null,
-    };
+    return [normalizedGames];
   } catch {
-    return { initialGames: null, activeGame: null };
+    return null;
   }
 }
 
-export async function Home() {
-  const { initialGames, activeGame } = await getInitialData();
+export default async function App() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session?.user) {
+    redirect("/login");
+  }
 
   return (
     <Provider>
       <SWRConfig
         value={{
           fallback: {
-            [unstable_serialize(() => "/api/games?limit=15")]: initialGames,
+            [unstable_serialize(() => "/api/games?limit=15")]:
+              getInitialGames(),
           },
         }}
       >
@@ -90,39 +88,7 @@ export async function Home() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between border-t border-border bg-card px-4 py-2">
-                <div className="flex items-center gap-4">
-                  <span className="text-label text-muted-foreground">
-                    ROUND{" "}
-                    <span className="text-foreground">
-                      #{activeGame?.id.slice(0, 6).toUpperCase() || "---"}
-                    </span>
-                  </span>
-                  <span className="text-label text-muted-foreground">
-                    STATUS{" "}
-                    <span
-                      className={
-                        activeGame?.status === "LIVE"
-                          ? "text-success"
-                          : "text-muted-foreground"
-                      }
-                    >
-                      {activeGame?.status || "IDLE"}
-                    </span>
-                  </span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-label text-muted-foreground">
-                    POOL{" "}
-                    <span className="text-foreground">
-                      {activeGame
-                        ? `${activeGame.totalPool.toFixed(1)}`
-                        : "0.0"}{" "}
-                      SOL
-                    </span>
-                  </span>
-                </div>
-              </div>
+              <GameStatusBar />
             </main>
 
             <RightSidebar />

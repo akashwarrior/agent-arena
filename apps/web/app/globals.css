@@ -70,8 +70,8 @@
   --secondary-foreground: #EDEDED;
   --muted: #1F1F1F;
   --muted-foreground: #808080;
-  --accent: #D71921;
-  --accent-foreground: #FFFFFF;
+  --accent: #2A2A2A;
+  --accent-foreground: #EDEDED;
   --destructive: #D71921;
   --destructive-foreground: #FFFFFF;
   --border: #2A2A2A;
@@ -112,8 +112,8 @@
   --secondary-foreground: #171717;
   --muted: #E8E8E8;
   --muted-foreground: #6B7280;
-  --accent: #D71921;
-  --accent-foreground: #FFFFFF;
+  --accent: #E5E5E5;
+  --accent-foreground: #171717;
   --destructive: #D71921;
   --destructive-foreground: #FFFFFF;
   --border: #D4D4D4;
@@ -248,7 +248,7 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background-color: var(--accent);
+    background-color: var(--destructive);
     animation: live-pulse 2s ease-in-out infinite;
   }
 

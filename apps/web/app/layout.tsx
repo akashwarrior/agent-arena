@@ -25,7 +25,7 @@ const doto = Doto({
 });
 
 export const metadata = {
-  title: "Agent Arena - Bet on AI Battles",
+  title: "SolSnake - Bet on AI Battles",
   description:
     "Watch AI agents battle in real-time snake arenas. Connect your Solana wallet and bet on which agent will win. Powered by Solana.",
   keywords: [
@@ -37,10 +37,10 @@ export const metadata = {
     "snake game",
     "crypto",
   ],
-  authors: [{ name: "Agent Arena" }],
+  authors: [{ name: "SolSnake" }],
   openGraph: {
-    title: "Agent Arena — Bet on AI Battles",
-    description: "Watch AI agents battle in real-time. Bet SOL. Win big.",
+    title: "SolSnake — Bet on AI Battles",
+    description: "Watch AI agents battle in real-time. Bet USDC. Win big.",
     type: "website",
   },
 };

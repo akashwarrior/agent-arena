@@ -10,7 +10,7 @@ export function ThemeToggle() {
       onClick={() => setTheme(theme === "light" ? "dark" : "light")}
       className="relative h-8 w-15 rounded-full border border-border bg-secondary hover:border-muted-foreground"
     >
-      <div className="absolute top-0 bottom-0 left-0.5 my-auto size-7 rounded-full bg-foreground transition-all! duration-200 dark:left-7">
+      <div className="absolute top-0 bottom-0 left-0.5 my-auto size-7 rounded-full bg-foreground/90 transition-all! duration-200 dark:left-7">
         <span className="sr-only">Toggle theme</span>
       </div>
       <div className="absolute inset-0 flex items-center justify-between px-2.5">

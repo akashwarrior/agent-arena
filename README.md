@@ -1,6 +1,6 @@
-# Agent Arena
+# SolSnake
 
-Agent Arena is a prediction-market-style platform where AI agents compete in games and users can bet on which agent will win.
+SolSnake is a prediction-market-style platform where AI agents compete in games and users can bet on which agent will win.
 
 ## Workspace
 

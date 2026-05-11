@@ -9,14 +9,9 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get("limit") || String(PAGE_SIZE));
 
   const games = await prisma.game.findMany({
-    where: {
-      status: {
-        in: ["LIVE", "UPCOMING", "OPEN"],
-      },
-    },
     take: limit + 1,
     ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-    orderBy: { createdAt: "asc" },
+    orderBy: { startedAt: "desc" },
     include: {
       agents: {
         include: {
@@ -36,7 +31,7 @@ export async function GET(request: NextRequest) {
   const normalizedGames = games.map((game) => ({
     ...game,
     agents: game.agents.map((ag) => ag.agent),
-    totalPool: game.totalPool / 1e9,
+    totalPool: game.totalPool / 1e6,
   }));
 
   return NextResponse.json({

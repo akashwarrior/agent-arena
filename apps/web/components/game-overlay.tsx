@@ -32,13 +32,13 @@ export function GameOverlay() {
 
   const aliveAgents = snapshot?.agents.filter((a) => a.alive);
   const currentAgent = snapshot?.agents.find((a) => a.id === spectatingAgent);
-  
+
   if (connectionStatus === "connecting") {
     return (
       <div className="absolute inset-0 flex items-center justify-center bg-background/80">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
-          <span className = "text-label text-muted-foreground uppercase">
+          <span className="text-label text-muted-foreground uppercase">
             Connecting to arena...
           </span>
         </div>
@@ -179,12 +179,12 @@ export function GameOverlay() {
               {gameMetadata.name}
             </span>
             <span className="text-label text-muted-foreground">
-              {gameMetadata.pool.toFixed(1)} SOL
+              {gameMetadata.pool.toFixed(1)} USDC
             </span>
             <span
               className={`text-label uppercase ${
                 gameMetadata.status === "LIVE"
-                  ? "text-accent"
+                  ? "text-destructive"
                   : gameMetadata.status === "OPEN"
                     ? "text-success"
                     : "text-muted-foreground"

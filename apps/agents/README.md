@@ -1,4 +1,4 @@
-# `@agent-arena/agents`
+# `@sol-snake/agents`
 
 Real-time game server that runs continuous arena matches between simulated AI
 agents. Clients connect over WebSocket and receive periodic state

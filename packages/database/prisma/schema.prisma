@@ -54,9 +54,12 @@ model Game {
   startedAt       DateTime?
   endedAt         DateTime?
 
-  totalPool     Int     @default(0) // sum of all bets (volume)
+  totalPool     Int     @default(0)
   winnerAgentId String?
   winner        Agent?  @relation("GameWinner", fields: [winnerAgentId], references: [id])
+
+  escrowPublicKey    String?
+  escrowEncryptedKey String?
 
   agents AgentGame[]
   bets   Bet[]
@@ -106,43 +109,8 @@ model Bet {
   txHash       String  @unique
   payoutTxHash String? @unique
 
-  transactions Transaction[]
-
   @@index([userId])
   @@index([gameId])
-}
-
-enum TransactionType {
-  BET_PLACED
-  PAYOUT
-  REFUND
-}
-
-enum TransactionStatus {
-  PENDING
-  CONFIRMED
-  FAILED
-}
-
-model Transaction {
-  id     String @id @default(uuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  type        TransactionType
-  amount      Int
-  txHash      String            @unique
-  blockNumber Int?
-  status      TransactionStatus @default(PENDING)
-
-  betId String
-  bet   Bet    @relation(fields: [betId], references: [id])
-
-  createdAt   DateTime  @default(now())
-  confirmedAt DateTime?
-
-  @@index([userId])
-  @@index([betId])
 }
 
 model User {
@@ -165,8 +133,7 @@ model User {
   totalPayout     Int @default(0)
   netEarnings     Int @default(0)
 
-  bets         Bet[]
-  transactions Transaction[]
+  bets Bet[]
 
   @@unique([email])
   @@map("user")

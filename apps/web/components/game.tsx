@@ -17,10 +17,6 @@ const MAX_DEVICE_PIXEL_RATIO = 1.5;
 
 const WS_URL = process.env.NEXT_PUBLIC_GAME_WS_URL ?? "ws://localhost:3001";
 
-function countdownSeconds(targetMs: number): number {
-  return Math.max(0, Math.ceil((targetMs - Date.now()) / 1000));
-}
-
 export function Game() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const spectatorRef = useRef<string | null>(null);
@@ -46,8 +42,6 @@ export function Game() {
 
     let viewport = { width: 0, height: 0, ratio: 0 };
     let animationFrame = 0;
-    let countdownTimer = 0;
-    let winnerTimer = 0;
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
@@ -69,39 +63,6 @@ export function Game() {
       if (animationFrame) {
         window.cancelAnimationFrame(animationFrame);
         animationFrame = 0;
-      }
-    };
-
-    const clearCountdown = () => {
-      if (countdownTimer) {
-        window.clearInterval(countdownTimer);
-        countdownTimer = 0;
-      }
-    };
-
-    const setCountdownTarget = (target?: string) => {
-      clearCountdown();
-
-      if (!target) {
-        setMatchStartCountdown(null);
-        return;
-      }
-
-      const targetMs = new Date(target).getTime();
-      if (!Number.isFinite(targetMs)) {
-        setMatchStartCountdown(null);
-        return;
-      }
-
-      const update = () => {
-        const seconds = countdownSeconds(targetMs);
-        setMatchStartCountdown(seconds);
-        if (seconds === 0) clearCountdown();
-      };
-
-      update();
-      if (targetMs > Date.now()) {
-        countdownTimer = window.setInterval(update, 1000);
       }
     };
 
@@ -130,20 +91,21 @@ export function Game() {
         const message = JSON.parse(event.data) as ServerMessage;
 
         switch (message.type) {
-          case "snapshot": {
+          case "snapshot":
             setGameSnapshot(message.data);
             cancelRender();
-            animationFrame = window.requestAnimationFrame(() => renderGame(message.data));
+            animationFrame = window.requestAnimationFrame(() =>
+              renderGame(message.data)
+            );
             break;
-          }
-          case "status": {
+
+          case "status":
             setMatchWinner(null);
             setGameMetadata(message.data);
 
             if (message.data.status === "LIVE") {
-              clearCountdown();
               setMatchStartCountdown(null);
-              
+
               if (audioRef.current) {
                 if (audioRef.current.paused) {
                   audioRef.current.currentTime = 0;
@@ -152,33 +114,29 @@ export function Game() {
               }
             } else {
               setGameSnapshot(null);
-              ctx.reset();
-              setCountdownTarget(
-                message.data.matchStartsAt ?? message.data.bettingClosesAt
+              setMatchStartCountdown(
+                message.data.matchStartsAt
+                  ? Math.floor(
+                      (new Date(message.data.matchStartsAt).getTime() -
+                        Date.now()) /
+                        1000
+                    )
+                  : null
               );
-
+              ctx.reset();
               if (audioRef.current) {
                 audioRef.current.pause();
               }
             }
             break;
-          }
-          case "winner": {
-            clearCountdown();
+
+          case "winner":
             setMatchStartCountdown(null);
             setMatchWinner(message.data);
 
             if (audioRef.current) {
               audioRef.current.pause();
             }
-
-            if (winnerTimer) window.clearTimeout(winnerTimer);
-            winnerTimer = window.setTimeout(() => {
-              setMatchWinner(null);
-            }, 5000);
-            break;
-          }
-          case "error":
             break;
         }
       } catch {
@@ -200,8 +158,6 @@ export function Game() {
 
     return () => {
       cancelRender();
-      clearCountdown();
-      if (winnerTimer) window.clearTimeout(winnerTimer);
       socket?.close();
       observer.disconnect();
     };

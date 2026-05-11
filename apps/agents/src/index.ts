@@ -1,5 +1,9 @@
-import type { GameMetadata, MatchResult, ServerMessage } from "@repo/types";
-import type { GameStatus } from "@repo/db";
+import type {
+  GameAgentMetadata,
+  GameMetadata,
+  ServerMessage,
+} from "@repo/types";
+import type { Game, GameStatus } from "@repo/db";
 import { prisma } from "@repo/db";
 import { GameEngine, type GameConfig } from "./engine";
 
@@ -7,9 +11,6 @@ type ClientData = { id: string };
 type Client = Bun.ServerWebSocket<ClientData>;
 
 const clients = new Set<Client>();
-
-const IDLE_POLL_MS = 5000;
-const MIN_AGENTS_PER_MATCH = 2;
 
 const PORT = process.env.PORT || 3001;
 const TICK_INTERVAL_MS = Math.floor(1000 / 24);
@@ -19,9 +20,6 @@ const MATCH_DURATION_MS = 3 * 60 * 1000; // 3 mins
 let engine: GameEngine | null = null;
 let lastEngineTickAt = Date.now();
 let nextMatchCheckAt = Date.now();
-let isStartingMatch = false;
-
-let currentGame: (GameRecord | null) = null;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -31,7 +29,7 @@ function makeClientId(): string {
   return `c-${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
 }
 
-function scheduleMatchCheck(delayMs: number): void {
+function scheduleMatchCheck(delayMs: number = 1000): void {
   nextMatchCheckAt = Date.now() + Math.max(0, delayMs);
 }
 
@@ -39,15 +37,7 @@ function broadcast(message: ServerMessage): void {
   const payload = JSON.stringify(message);
 
   for (const client of clients) {
-    try {
-      client.send(payload);
-    } catch (error) {
-      clients.delete(client);
-      console.error("[arena] failed to broadcast websocket message", {
-        clientId: client.data.id,
-        error,
-      });
-    }
+    client.send(payload);
   }
 }
 
@@ -58,10 +48,6 @@ function broadcastSnapshot(): void {
 
 function broadcastStatus(status: GameMetadata): void {
   broadcast({ type: "status", data: status });
-}
-
-function broadcastWinner(result: MatchResult): void {
-  broadcast({ type: "winner", data: result });
 }
 
 async function updateGameStatus(
@@ -114,9 +100,7 @@ async function fetchNextGame() {
   }
 }
 
-type GameRecord = NonNullable<Awaited<ReturnType<typeof fetchNextGame>>>;
-
-function getSchedule(game: GameRecord, now: number) {
+function getSchedule(game: Game, now: number) {
   const bettingOpensAtMs = game.bettingOpensAt?.getTime() ?? now;
   const bettingClosesAtMs = game.bettingClosesAt?.getTime() ?? bettingOpensAtMs;
   return {
@@ -126,7 +110,7 @@ function getSchedule(game: GameRecord, now: number) {
 }
 
 function toGameMetadata(
-  game: GameRecord,
+  game: Game & { agents: { agent: GameAgentMetadata }[] },
   status: GameStatus = game.status,
 ): GameMetadata {
   const { bettingClosesAtMs } = getSchedule(game, Date.now());
@@ -134,7 +118,7 @@ function toGameMetadata(
   return {
     id: game.id,
     name: game.name,
-    pool: game.totalPool,
+    pool: game.totalPool / 1e6,
     status,
     bettingOpensAt: game.bettingOpensAt?.toISOString(),
     bettingClosesAt: game.bettingClosesAt?.toISOString(),
@@ -162,46 +146,46 @@ function finishCurrentMatch(): void {
   }
 
   engine.finishMatch();
-  const snapshot = engine.getSnapshot();
-  const result: MatchResult = {
-    gameId: engine.id,
-    winnerId: snapshot.winnerId,
-    winnerName: engine.getWinnerName(),
-  };
 
-  broadcastSnapshot();
-  broadcastWinner(result);
-  void updateGameStatus(engine.id, "ENDED", snapshot.winnerId);
-
-  console.log("[arena] round finished", {
-    gameId: engine.id,
-    winnerId: snapshot.winnerId,
-  });
+  const id = engine.id;
+  const winner = engine.getWinner()!;
+  const agents = engine.getAgents()!;
 
   engine = null;
-  currentGame = null;
-  scheduleMatchCheck(INTERMISSION_MS);
-}
 
-function requestMatchStartCheck(): void {
-  if (isStartingMatch) return;
-
-  isStartingMatch = true;
-  startNextMatch().finally(() => {
-    isStartingMatch = false;
+  // TODO: verify if this works correctly
+  console.log({
+    msg: "after engine cleanup match result",
+    id,
+    winner,
+    agents,
   });
+
+  broadcastSnapshot();
+  broadcast({
+    type: "winner",
+    data: { gameId: id, winnerId: winner.id, winnerName: winner.name },
+  });
+
+  updateGameStatus(id, "ENDED", winner.id).then(() => {
+    console.log("[arena] triggering payout resolution", { gameId: id });
+    return fetch("http://localhost:3000/api/games/resolve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gameId: id, agentRanks: agents }),
+    });
+  });
+
+  scheduleMatchCheck(INTERMISSION_MS);
 }
 
 function tickLoop(): void {
   const now = Date.now();
 
   if (!engine) {
-    if (now >= nextMatchCheckAt) requestMatchStartCheck();
-    return;
-  }
-
-  if (engine.getWinnerId() !== null) {
-    finishCurrentMatch();
+    if (now >= nextMatchCheckAt) {
+      startNextMatch();
+    }
     return;
   }
 
@@ -217,37 +201,25 @@ function tickLoop(): void {
   broadcastSnapshot();
 }
 
-async function startNextMatch(): Promise<void> {
+async function startNextMatch(): Promise<Awaited<
+  ReturnType<typeof fetchNextGame>
+> | void> {
   const game = await fetchNextGame();
-  const now = Date.now();
-  currentGame = game;
 
   if (!game) {
-    scheduleMatchCheck(IDLE_POLL_MS);
+    scheduleMatchCheck();
     console.log("[arena] no upcoming games, waiting...");
     return;
   }
 
-  const agents = game.agents.map((x) => x.agent);
-  if (agents.length < MIN_AGENTS_PER_MATCH) {
-    broadcastStatus(toGameMetadata(game));
-    scheduleMatchCheck(IDLE_POLL_MS);
-    console.error("[arena] game has too few agents to start", {
-      gameId: game.id,
-      agents: agents.length,
-    });
-    return;
-  }
-
+  const now = Date.now();
   const { bettingOpensAtMs, bettingClosesAtMs } = getSchedule(game, now);
 
   if (game.status === "UPCOMING" && now < bettingOpensAtMs) {
-    const waitMs = bettingOpensAtMs - now;
     broadcastStatus(toGameMetadata(game, "UPCOMING"));
-    scheduleMatchCheck(waitMs);
+    scheduleMatchCheck();
     console.log("[arena] waiting for betting to open", {
       gameId: game.id,
-      waitMs,
     });
     return;
   }
@@ -257,23 +229,17 @@ async function startNextMatch(): Promise<void> {
     game.status !== "LIVE" &&
     game.status !== "LOCKED"
   ) {
-    const waitMs = bettingClosesAtMs - now;
     if (game.status !== "OPEN") {
       const openedGame = await updateGameStatus(game.id, "OPEN");
       if (!openedGame) {
-        scheduleMatchCheck(IDLE_POLL_MS);
+        scheduleMatchCheck();
         return;
       }
-      currentGame = {
-        ...game,
-        ...openedGame,
-      };
     }
     broadcastStatus(toGameMetadata(game, "OPEN"));
-    scheduleMatchCheck(waitMs);
+    scheduleMatchCheck();
     console.log("[arena] betting open, waiting for match start", {
       gameId: game.id,
-      waitMs,
     });
     return;
   }
@@ -281,13 +247,9 @@ async function startNextMatch(): Promise<void> {
   if (game.status !== "LIVE") {
     const lockedGame = await updateGameStatus(game.id, "LOCKED");
     if (!lockedGame) {
-      scheduleMatchCheck(IDLE_POLL_MS);
+      scheduleMatchCheck();
       return;
     }
-    currentGame = {
-      ...game,
-      ...lockedGame,
-    };
     broadcastStatus(toGameMetadata(game, "LOCKED"));
   }
 
@@ -296,22 +258,18 @@ async function startNextMatch(): Promise<void> {
       ? game
       : await updateGameStatus(game.id, "LIVE");
   if (!liveGame) {
-    scheduleMatchCheck(IDLE_POLL_MS);
+    scheduleMatchCheck();
     return;
   }
-  currentGame = {
-    ...game,
-    ...liveGame,
-  };
 
   const startedAtMs = liveGame.startedAt?.getTime() ?? Date.now();
   const config: GameConfig = {
     id: game.id,
     name: game.name,
-    pool: game.totalPool,
+    pool: game.totalPool / 1e6,
     durationMs: MATCH_DURATION_MS,
     startedAtMs,
-    agents,
+    agents: game.agents.map((x) => x.agent),
   };
 
   engine = new GameEngine(config);
@@ -356,20 +314,10 @@ const server = Bun.serve<ClientData, never>({
         client.send(
           JSON.stringify({ type: "snapshot", data: engine.getSnapshot() }),
         );
-        return;
-      }
-
-      if (currentGame) {
-        client.send(
-          JSON.stringify({
-            type: "status",
-            data: toGameMetadata(currentGame, currentGame.status),
-          }),
-        );
       }
     },
 
-    message(client, raw) { },
+    message(client, raw) {},
 
     close(client, code, reason) {
       clients.delete(client);
@@ -384,7 +332,6 @@ const server = Bun.serve<ClientData, never>({
 });
 
 setInterval(tickLoop, TICK_INTERVAL_MS);
-requestMatchStartCheck();
 
 console.log("[arena] listening", {
   url: `ws://localhost:${server.port}`,

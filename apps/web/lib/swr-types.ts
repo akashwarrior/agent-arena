@@ -21,6 +21,13 @@ export type BetPlacementResponse = {
   bet: Bet;
 };
 
+export type BetInitResponse = {
+  escrowPublicKey: string;
+  escrowUSDCAddress: string;
+  usdcAmount: number;
+  gameId: string;
+};
+
 export type LeaderboardEntry = {
   rank: number;
   id: string;

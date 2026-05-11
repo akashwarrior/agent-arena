@@ -9,12 +9,14 @@
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
+    "@types/pg": "^8.20.0",
     "prisma": "^7.8.0",
     "tsx": "^4.21.0"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "@solana/web3.js": "^1.98.4",
     "dotenv": "^17.4.2",
     "pg": "^8.20.0"
   },

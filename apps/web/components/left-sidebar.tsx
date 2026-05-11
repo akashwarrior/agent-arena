@@ -3,7 +3,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAtom } from "jotai";
 import { leftSidebarOpenAtom } from "@/lib/store";
-import { useGames, useBets, useGameDetail, placeBet } from "@/lib/swr";
+import {
+  useGames,
+  useBets,
+  useGameDetail,
+  requestBetSwap,
+  confirmBet,
+} from "@/lib/swr";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -15,17 +21,32 @@ import {
   Lock,
   Loader2,
   Target,
+  Wallet,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import type { Game, Agent, Bet } from "@repo/db";
+import { useWallet } from "@solana/wallet-adapter-react";
+import {
+  Transaction,
+  PublicKey,
+  Connection,
+  SystemProgram,
+} from "@solana/web3.js";
+import {
+  getAssociatedTokenAddressSync,
+  createAssociatedTokenAccountInstruction,
+  createTransferInstruction,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
+import { USDC_MINT } from "@/lib/jupiter";
 
 type GameWithAgents = Game & { agents: Agent[] };
 
 function StatusBadge({ status }: { status: Game["status"] }) {
   if (status === "LIVE") {
     return (
-      <span className="text-label inline-flex items-center gap-2 text-accent">
+      <span className="text-label inline-flex items-center gap-2 text-destructive">
         <span className="live-dot" />
         LIVE
       </span>
@@ -74,7 +95,7 @@ function GameRow({
           <div className="text-label flex items-center gap-2 text-muted-foreground">
             <span>R{game.id.slice(0, 6).toUpperCase()}</span>
             <span className="text-border">·</span>
-            <span>{game.totalPool.toFixed(1)} SOL</span>
+            <span>{game.totalPool.toFixed(1)} USDC</span>
           </div>
         </div>
         <div className="ml-3 flex shrink-0 items-center gap-3">
@@ -131,7 +152,7 @@ function GamesList({
     return (
       <div className="flex flex-col">
         <div className="border-b border-border bg-secondary px-4 py-2.5">
-          <span className="text-label text-muted-foreground">SELECT ARENA</span>
+          <span className="text-label text-muted-foreground">SELECT MATCH</span>
         </div>
         <div className="flex items-center justify-center py-16">
           <Loader2 className="size-4 animate-spin text-muted-foreground" />
@@ -144,7 +165,7 @@ function GamesList({
     return (
       <div className="flex flex-col">
         <div className="border-b border-border bg-secondary px-4 py-2.5">
-          <span className="text-label text-muted-foreground">SELECT ARENA</span>
+          <span className="text-label text-muted-foreground">SELECT MATCH</span>
         </div>
         <div className="flex items-center justify-center py-16">
           <p className="text-label text-muted-foreground">[ ERROR LOADING ]</p>
@@ -156,7 +177,7 @@ function GamesList({
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       <div className="border-b border-border bg-secondary px-4 py-2.5">
-        <span className="text-label text-muted-foreground">SELECT ARENA</span>
+        <span className="text-label text-muted-foreground">SELECT MATCH</span>
       </div>
       {games.map((game) => (
         <GameRow
@@ -266,7 +287,9 @@ function BetInputInline({
               if (e.key === "Enter" && valid) onSubmit();
             }}
           />
-          <span className="text-label shrink-0 text-muted-foreground">SOL</span>
+          <span className="text-label shrink-0 text-muted-foreground">
+            USDC
+          </span>
         </div>
         <Button
           disabled={!valid || submitting}
@@ -295,6 +318,7 @@ function GameDetail({
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [betAmount, setBetAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const { publicKey, sendTransaction, connected } = useWallet();
 
   const displayGame = game || initialGame;
   const displayBet = userBet || initialBet;
@@ -308,19 +332,99 @@ function GameDetail({
 
   const handlePlaceBet = async () => {
     if (!selectedAgent || !selectedAgentData) return;
-    const amount = parseFloat(betAmount);
-    if (isNaN(amount) || amount <= 0) return;
+    if (!publicKey || !connected) {
+      toast.error("Wallet not connected", {
+        description: "Connect your wallet to place a bet",
+      });
+      return;
+    }
+
+    const amountUsdc = Math.round(parseFloat(betAmount) * 100) / 100;
+    if (isNaN(amountUsdc) || amountUsdc <= 0) return;
 
     setSubmitting(true);
     try {
-      await placeBet(
+      const initData = await requestBetSwap(
         displayGame.id,
         selectedAgent,
-        amount,
-        "wallet-placeholder"
+        amountUsdc,
       );
+
+      const usdcMint = new PublicKey(USDC_MINT);
+      const escrowPubkey = new PublicKey(initData.escrowPublicKey);
+      const userATA = getAssociatedTokenAddressSync(usdcMint, publicKey);
+      const escrowATA = new PublicKey(initData.escrowUSDCAddress);
+
+      const rpcUrl =
+        process.env.NEXT_PUBLIC_SOLANA_RPC_URL ??
+        "https://api.devnet.solana.com";
+      const connection = new Connection(rpcUrl);
+
+      const tx = new Transaction();
+
+      const [userATAInfo, escrowATAInfo] = await Promise.all([
+        connection.getAccountInfo(userATA),
+        connection.getAccountInfo(escrowATA),
+      ]);
+
+      if (!userATAInfo) {
+        tx.add(
+          createAssociatedTokenAccountInstruction(
+            publicKey,
+            userATA,
+            publicKey,
+            usdcMint
+          )
+        );
+      }
+
+      if (!escrowATAInfo) {
+        tx.add(
+          createAssociatedTokenAccountInstruction(
+            publicKey,
+            escrowATA,
+            escrowPubkey,
+            usdcMint
+          )
+        );
+      }
+
+      tx.add(
+        createTransferInstruction(
+          userATA,
+          escrowATA,
+          publicKey,
+          BigInt(initData.usdcAmount),
+          [],
+          TOKEN_PROGRAM_ID
+        )
+      );
+
+      // send 0.001 SOL to escrow for future transaction fees
+      tx.add(
+        SystemProgram.transfer({
+          fromPubkey: publicKey,
+          toPubkey: escrowPubkey,
+          lamports: 1_000_000,
+        })
+      );
+
+      const { blockhash } = await connection.getLatestBlockhash("confirmed");
+      tx.recentBlockhash = blockhash;
+      tx.feePayer = publicKey;
+
+      const txHash = await sendTransaction(tx, connection);
+
+      await confirmBet(
+        displayGame.id,
+        selectedAgent,
+        amountUsdc,
+        publicKey.toBase58(),
+        txHash,
+      );
+
       toast.success("Bet placed", {
-        description: `${betAmount} SOL on ${selectedAgentData.name}`,
+        description: `${betAmount} USDC on ${selectedAgentData.name}`,
         duration: 3000,
       });
       setSelectedAgent(null);
@@ -347,7 +451,6 @@ function GameDetail({
 
   return (
     <div className="flex flex-col">
-      {/* Header */}
       <div className="border-b border-border px-4 py-3">
         <button
           type="button"
@@ -373,18 +476,16 @@ function GameDetail({
         </div>
       </div>
 
-      {/* Hero Metric */}
       <div className="border-b border-border bg-secondary px-4 py-6">
         <span className="text-label mb-2 block text-muted-foreground">
           PRIZE POOL
         </span>
         <span className="text-display-lg text-data text-foreground">
           {displayGame.totalPool.toFixed(1)}
-          <span className="text-label ml-2 text-muted-foreground">SOL</span>
+          <span className="text-label ml-2 text-muted-foreground">USDC</span>
         </span>
       </div>
 
-      {/* Status Messages */}
       {displayGame.status === "LIVE" && (
         <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
           <Lock className="size-3 text-muted-foreground" />
@@ -399,7 +500,7 @@ function GameDetail({
           <div className="flex items-center gap-2">
             <span className="size-1.5 rounded-full bg-success" />
             <span className="text-label text-foreground">
-              {displayBet.amount.toFixed(2)} SOL ON{" "}
+              {displayBet.amount.toFixed(2)} USDC ON{" "}
               {displayBet.agentId.toUpperCase()}
             </span>
           </div>
@@ -425,7 +526,6 @@ function GameDetail({
         </div>
       )}
 
-      {/* Agent Roster */}
       <div className="flex flex-col">
         <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
           <span className="text-label text-muted-foreground">
@@ -435,6 +535,15 @@ function GameDetail({
             {displayGame.agents.length} AGENTS
           </span>
         </div>
+
+        {!connected && canBet && (
+          <div className="flex items-center gap-3 border-b border-border bg-secondary/50 px-4 py-3">
+            <Wallet className="size-4 text-muted-foreground" />
+            <span className="text-label text-muted-foreground">
+              Connect wallet to place bets
+            </span>
+          </div>
+        )}
 
         <div className="flex flex-col">
           {displayGame?.agents.map((a) => (
@@ -543,7 +652,7 @@ function MyBetsView() {
             </div>
             <div className="flex flex-col items-end gap-0.5">
               <span className="text-data text-foreground">
-                {bet.amount.toFixed(2)} SOL
+                {bet.amount.toFixed(2)} USDC
               </span>
               <div className="flex items-center gap-2">
                 {bet.status === "WON" && bet.payout && (
@@ -589,7 +698,7 @@ function MyBetsView() {
             TOTAL WAGERED
           </span>
           <span className="text-data text-foreground">
-            {totalWagered.toFixed(2)} SOL
+            {totalWagered.toFixed(2)} USDC
           </span>
         </div>
         <Separator className="my-2 bg-border" />
@@ -599,7 +708,7 @@ function MyBetsView() {
             className={`text-data ${pnl >= 0 ? "text-success" : "text-muted-foreground"}`}
           >
             {pnl >= 0 ? "+" : ""}
-            {pnl.toFixed(2)} SOL
+            {pnl.toFixed(2)} USDC
           </span>
         </div>
       </div>
@@ -672,7 +781,7 @@ export function LeftSidebar() {
         <div className="flex items-center justify-between border-t border-border bg-secondary px-4 py-2.5">
           <div className="flex items-center gap-2">
             <div className="size-1.5 rounded-full bg-success" />
-            <span className="text-label text-foreground">MAINNET</span>
+            <span className="text-label text-foreground">DEVNET</span>
           </div>
           <span className="text-label text-muted-foreground">v1.0</span>
         </div>

@@ -228,18 +228,12 @@ export class GameEngine {
     };
   }
 
+  public getWinner(): Agent | null {
+    return this.agents.find((x) => x.id === this.winnerId) || null;
+  }
+
   public getAgents(): GameAgentMetadata[] {
     return this.agents;
-  }
-
-  public getWinnerId(): string | null {
-    return this.winnerId;
-  }
-
-  public getWinnerName(): string | null {
-    if (!this.winnerId) return null;
-    const agent = this.agents.find((s) => s.id === this.winnerId);
-    return agent?.name ?? null;
   }
 
   private nextFoodId(): string {
