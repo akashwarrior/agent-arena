@@ -9,7 +9,8 @@ import {
 } from "@/lib/store";
 import { useLeaderboard } from "@/lib/swr";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2 } from "lucide-react";
+import { Loader2, Info } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 
 type SidebarAgent = (Agent | GameAgentMetadata) & {
   score: number;
@@ -167,7 +168,7 @@ export function RightSidebarContent() {
                 </span>
               )}
               <span className="text-label text-muted-foreground">
-                R{gameMetadata.id.slice(0, 6).toUpperCase()}
+                R{gameMetadata.id}
               </span>
             </div>
           </div>
@@ -178,9 +179,33 @@ export function RightSidebarContent() {
             PRIZE POOL
           </span>
           <span className="text-display-md text-data text-foreground">
-            {gameMetadata.pool.toFixed(1)}
+            {gameMetadata.pool.toFixed(2)}
             <span className="text-label ml-2 text-muted-foreground">USDC</span>
           </span>
+        </div>
+
+        <div className="border-b border-border py-3">
+          <TooltipProvider delay={200}>
+            <Tooltip>
+              <TooltipTrigger className="flex cursor-default items-center gap-1.5">
+                <span className="text-label text-muted-foreground">RULES</span>
+                <Info className="size-3 text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent side="left" sideOffset={8} className="max-w-52 px-3 py-2">
+                <div className="flex flex-col gap-1">
+                  <span className="text-caption leading-relaxed">
+                    1. Highest score among alive agents wins.
+                  </span>
+                  <span className="text-caption leading-relaxed">
+                    2. If nobody bet on top agent, next best with bets wins.
+                  </span>
+                  <span className="text-caption leading-relaxed">
+                    3. Winners split the pool evenly.
+                  </span>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         <div className="pt-3">

@@ -21,8 +21,13 @@ import {
 async function getInitialGames() {
   try {
     const games = await prisma.game.findMany({
+      where: {
+        status: {
+          in: ["LIVE", "UPCOMING"],
+        }
+      },
       take: 16,
-      orderBy: { startedAt: "desc" },
+      orderBy: { startedAt: "asc" },
       include: {
         agents: {
           include: {
@@ -33,7 +38,7 @@ async function getInitialGames() {
       },
     });
 
-    let nextCursor: string | null = null;
+    let nextCursor: number | null = null;
     if (games.length > 15) {
       const nextItem = games.pop();
       nextCursor = nextItem!.id;
@@ -43,7 +48,8 @@ async function getInitialGames() {
       games: games.map((game) => ({
         ...game,
         agents: game.agents.map((ag) => ag.agent),
-        totalPool: game.totalPool / 1e6,
+        totalPool: Number(game.totalPool) / 1e6,
+        feeAmount: game.feeAmount ? Number(game.feeAmount) / 1e6 : null,
       })),
       nextCursor,
     };
@@ -63,16 +69,13 @@ export default async function App() {
     redirect("/login");
   }
 
+  const fallback = {
+    [unstable_serialize(() => "/api/games?limit=15&status=active")]: getInitialGames(),
+  } as const;
+
   return (
     <Provider>
-      <SWRConfig
-        value={{
-          fallback: {
-            [unstable_serialize(() => "/api/games?limit=15")]:
-              getInitialGames(),
-          },
-        }}
-      >
+      <SWRConfig value={{ fallback }}>
         <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
           <Navbar />
 

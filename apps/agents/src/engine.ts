@@ -11,9 +11,9 @@ import type {
 const SPRITE_SIZE = 60;
 const INITIAL_SCALE = 0.6;
 const BASE_SIZE = SPRITE_SIZE * INITIAL_SCALE;
-const INITIAL_TAIL_SECTIONS = 30;
+const INITIAL_TAIL_SECTIONS = 20;
 const SPEED = 130;
-const SIZE_GROWTH_FACTOR = 1.01;
+const SIZE_GROWTH_FACTOR = 1.005;
 const EDGE_OFFSET = 4;
 
 const FOOD_COUNT = 100;
@@ -59,9 +59,11 @@ function createRandomFood(id: string): Food {
 }
 
 function spawnOffset(index: number, total: number): Point {
+  const angle = (index / total) * Math.PI * 2;
+  const radius = Math.min(WORLD.width, WORLD.height) * 0.35;
   return {
-    x: (index - (total - 1) / 2) * 200,
-    y: 0,
+    x: Math.cos(angle) * radius,
+    y: Math.sin(angle) * radius,
   };
 }
 
@@ -96,7 +98,6 @@ function createAgent(
     head,
     body: [],
     length: INITIAL_TAIL_SECTIONS + 1,
-    survivedMs: 0,
     rank: null,
     headPath: headPath,
   };
@@ -126,7 +127,7 @@ function nextSectionIndex(
 }
 
 export type GameConfig = {
-  id: string;
+  id: number;
   name: string;
   pool: number;
   durationMs: number;
@@ -135,9 +136,9 @@ export type GameConfig = {
 };
 
 export class GameEngine {
-  public readonly id: string;
+  public readonly id: number;
   public readonly name: string;
-  public readonly pool: number;
+  public pool: number;
 
   private matchDuration: number;
   private remainingMs: number;
@@ -201,7 +202,6 @@ export class GameEngine {
 
     for (const agent of this.internals.values()) {
       if (!agent.alive) continue;
-      agent.survivedMs = elapsedMs;
       agent.angle = heuristicStrategy({ self: agent, deltaSeconds });
       this.moveAgent(agent, deltaSeconds);
       const lastIndex = this.recomputeSections(agent);
@@ -232,7 +232,7 @@ export class GameEngine {
     return this.agents.find((x) => x.id === this.winnerId) || null;
   }
 
-  public getAgents(): GameAgentMetadata[] {
+  public getAgents(): Agent[] {
     return this.agents;
   }
 
@@ -381,7 +381,6 @@ export class GameEngine {
     if (!agent.alive) return;
 
     agent.alive = false;
-    agent.survivedMs = this.elapsedMs;
 
     const step = Math.max(
       1,
@@ -402,8 +401,7 @@ export class GameEngine {
   private updateRanks(): void {
     this.agents.sort((a, b) => {
       if (a.alive !== b.alive) return a.alive ? -1 : 1;
-      if (b.score !== a.score) return b.score - a.score;
-      return b.survivedMs - a.survivedMs;
+      return b.score - a.score;
     });
 
     this.agents.forEach((agent, index) => {

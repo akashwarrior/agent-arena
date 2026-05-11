@@ -18,15 +18,19 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-export function useGames() {
+export function useGames(statusFilter?: "active" | "ended") {
   const { data, error, isLoading, size, setSize, isValidating, mutate } =
     useSWRInfinite<GamesResponse>((pageIndex, previousPageData) => {
       const cursor = pageIndex === 0 ? null : previousPageData?.nextCursor;
       const params = new URLSearchParams();
       if (cursor) params.set("cursor", cursor);
       params.set("limit", "15");
+      if (statusFilter) params.set("status", statusFilter);
       return `/api/games?${params.toString()}`;
-    }, fetcher);
+    },
+      fetcher,
+      { refreshInterval: 5000 },
+    );
 
   const games = data ? data.flatMap((page) => page.games) : [];
   const hasMore = data ? data[data.length - 1]?.nextCursor !== null : true;
@@ -45,7 +49,7 @@ export function useGames() {
   };
 }
 
-export function useGameDetail(gameId: string | null) {
+export function useGameDetail(gameId: number | null) {
   const { data, error, isLoading, mutate } = useSWR<GameDetailResponse>(
     gameId ? `/api/games/${gameId}` : null,
     fetcher,
@@ -54,24 +58,26 @@ export function useGameDetail(gameId: string | null) {
 
   return {
     game: data?.game ?? null,
-    userBet: data?.userBet ?? null,
+    userBets: data?.userBets ?? [],
     isLoading,
     error,
     mutate,
   };
 }
 
-export function useBets(enabled = true) {
+export function useBets(autoRefresh: boolean) {
   const { data, error, isLoading, size, setSize, isValidating, mutate } =
     useSWRInfinite<BetsResponse>((pageIndex, previousPageData) => {
-      if (!enabled) return null;
       if (previousPageData && !previousPageData.nextCursor) return null;
       const cursor = pageIndex === 0 ? null : previousPageData?.nextCursor;
       const params = new URLSearchParams();
       if (cursor) params.set("cursor", cursor);
       params.set("limit", "20");
       return `/api/bets?${params.toString()}`;
-    }, fetcher);
+    },
+      fetcher,
+      { refreshInterval: autoRefresh ? 3000 : undefined },
+    );
 
   const bets = data ? data.flatMap((page) => page.bets) : [];
   const hasMore = data ? data[data.length - 1]?.nextCursor !== null : true;
@@ -106,7 +112,7 @@ export function useLeaderboard() {
 }
 
 export async function requestBetSwap(
-  gameId: string,
+  gameId: number,
   agentId: string,
   amount: number,
 ): Promise<BetInitResponse> {
@@ -127,9 +133,8 @@ export async function requestBetSwap(
 }
 
 export async function confirmBet(
-  gameId: string,
+  gameId: number,
   agentId: string,
-  amount: number,
   walletAddress: string,
   txHash: string): Promise<BetPlacementResponse> {
   const res = await fetch("/api/bets", {
@@ -138,7 +143,6 @@ export async function confirmBet(
     body: JSON.stringify({
       gameId,
       agentId,
-      amount,
       walletAddress,
       txHash,
     }),

@@ -1,183 +1,177 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@repo/db";
+import type { Agent } from "@repo/types";
 import { resolveGameEscrow } from "@/lib/escrow";
 import { PublicKey } from "@solana/web3.js";
+import { prisma } from "@repo/db";
+
+const FEE_BPS = parseInt(process.env.NEXT_PUBLIC_PLATFORM_FEE_BPS ?? "100", 10);
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
 
 export async function POST(req: NextRequest) {
   try {
+    if (INTERNAL_API_KEY) {
+      const authHeader = req.headers.get("x-api-key");
+      if (authHeader !== INTERNAL_API_KEY) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+
     const body = await req.json();
-    const { gameId, agentRanks } = body as {
-      gameId: string;
-      agentRanks: Array<{ agentId: string; rank: number | null }>;
-    };
+    const { gameId, agentRanks } = body as { gameId: number; agentRanks: Agent[] };
 
     if (!gameId || !agentRanks?.length) {
-      return NextResponse.json(
-        { error: "Missing gameId or agentRanks" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "gameId and agentRanks required" }, { status: 400 });
     }
 
-    const game = await prisma.game.findUnique({
-      where: { id: gameId },
-    });
-
-    if (!game) {
-      return NextResponse.json({ error: "Game not found" }, { status: 404 });
-    }
-
-    if (game.status !== "ENDED") {
-      return NextResponse.json(
-        { error: "Game has not ended" },
-        { status: 400 }
-      );
-    }
-
-    if (!game.escrowEncryptedKey || !game.escrowPublicKey) {
-      return NextResponse.json(
-        { error: "Escrow not initialized" },
-        { status: 500 }
-      );
-    }
-
-    const bets = await prisma.bet.findMany({
-      where: { gameId, status: "PENDING" },
-      include: { user: true },
-    });
+    const [game, bets] = await Promise.all([
+      prisma.game.update({
+        where: { id: gameId },
+        data: { status: "ENDED" },
+        select: { totalPool: true },
+      }),
+      prisma.bet.findMany({
+        where: { gameId, status: "PENDING" },
+        include: { user: true },
+      }),
+    ]);
 
     if (bets.length === 0) {
       return NextResponse.json({ resolved: false, reason: "no_bets" });
     }
 
-    const rankMap = new Map<string, number>();
-    for (const r of agentRanks) {
-      if (r.rank !== null) rankMap.set(r.agentId, r.rank);
-    }
+    const sorted = [...agentRanks].sort((a, b) => {
+      if (a.alive !== b.alive) return a.alive ? -1 : 1;
+      return b.score - a.score;
+    });
 
-    const uniqueUsers = new Set(bets.map((b) => b.userId));
-
-    let winningAgentIds: Set<string>;
-
-    if (uniqueUsers.size === 1) {
-      winningAgentIds = new Set([bets[0].agentId]);
-    } else {
-      let bestRank = Infinity;
-
-      for (const bet of bets) {
-        const rank = rankMap.get(bet.agentId);
-        if (rank !== undefined && rank < bestRank) bestRank = rank;
-      }
-
-      winningAgentIds = new Set<string>();
-      for (const bet of bets) {
-        const rank = rankMap.get(bet.agentId);
-        if (rank !== undefined && rank === bestRank) {
-          winningAgentIds.add(bet.agentId);
-        }
+    let winningAgentId: string | null = null;
+    for (const agent of sorted) {
+      if (bets.some((b) => b.agentId === agent.id)) {
+        winningAgentId = agent.id;
+        break;
       }
     }
 
-    const winningBets = bets.filter((b) => winningAgentIds.has(b.agentId));
-    const losingBets = bets.filter((b) => !winningAgentIds.has(b.agentId));
+    const winningBets = bets.filter((b) => b.agentId === winningAgentId);
+    const losingBets = bets.filter((b) => b.agentId !== winningAgentId);
 
-    const totalWinningPool = winningBets.reduce(
-      (sum, b) => sum + b.amount,
-      0
-    );
-    const totalPool = bets.reduce(
-      (sum, b) => sum + b.amount,
-      0
-    );
+    const totalPool = Number(game.totalPool);
+    const feeAmount = Math.floor((totalPool * FEE_BPS) / 10_000);
+    const payoutPool = totalPool - feeAmount;
+    const perWinnerPayout = Math.ceil(payoutPool / winningBets.length);
 
-    const payoutPool = totalPool; // no fee for now
+    const validEntrants: { walletAddress: string; betAmount: number; payoutAmount: number }[] = [];
+    const entrantByBetId = new Map<string, boolean>();
 
-    const winningEntrants = winningBets
-      .map((bet) => ({
-        walletAddress: bet.walletAddress,
-        betAmount: bet.amount,
-        payoutAmount: Math.floor(
-          (bet.amount / totalWinningPool) * payoutPool
-        ),
-      }))
-      .filter((w) => {
-        try {
-          new PublicKey(w.walletAddress);
-          return true;
-        } catch {
-          return false;
-        }
-      });
+    for (const bet of winningBets) {
+      try {
+        // Validate wallet address
+        new PublicKey(bet.walletAddress);
 
-    let txIds: string[] = [];
-
-    try {
-      const result = await resolveGameEscrow({
-        escrowSecretKey: game.escrowEncryptedKey,
-        winners: winningEntrants,
-      });
-      txIds = result.txIds;
-    } catch (err) {
-      console.error("[resolve] escrow payout failed", err);
+        entrantByBetId.set(bet.id, true);
+        validEntrants.push({
+          walletAddress: bet.walletAddress,
+          betAmount: Number(bet.amount),
+          payoutAmount: perWinnerPayout,
+        });
+      } catch {
+        // do nothing
+      }
     }
 
-    for (let i = 0; i < winningBets.length; i++) {
-      const bet = winningBets[i];
-      const payout = winningEntrants[i]?.payoutAmount ?? 0;
-      const payoutTxHash = txIds[i] || undefined;
+    const { winnerTxIds, totalFee: actualFee } = await resolveGameEscrow({
+      winners: validEntrants,
+      totalPool: totalPool,
+      feeAmount: feeAmount,
+    });
 
-      await prisma.bet.update({
-        where: { id: bet.id },
-        data: {
-          status: "WON",
-          payout,
-          payoutTxHash,
-          settledAt: new Date(),
-        },
-      });
+    let txIdx = 0;
+    const dbWrites = [];
 
-      if (payout > 0) {
-        try {
-          await prisma.user.update({
-            where: { id: bet.userId },
-            data: {
-              totalBetsWon: { increment: 1 },
-              totalPayout: { increment: payout },
-              netEarnings: {
-                increment: payout - bet.amount,
-              },
-            },
-          });
-        } catch {}
-      }
+    for (const bet of winningBets) {
+      const payoutTxHash = entrantByBetId.get(bet.id) ? winnerTxIds[txIdx++] ?? null : null;
+
+      dbWrites.push(
+        prisma.bet.update({
+          where: { id: bet.id },
+          data: { status: "WON", payout: perWinnerPayout, payoutTxHash, settledAt: new Date() },
+        }),
+        prisma.user.update({
+          where: { id: bet.userId },
+          data: {
+            totalBetsWon: { increment: 1 },
+            totalPayout: { increment: perWinnerPayout },
+            netEarnings: { increment: perWinnerPayout - Number(bet.amount) },
+          },
+        }),
+      );
     }
 
     for (const bet of losingBets) {
-      await prisma.bet.update({
-        where: { id: bet.id },
-        data: { status: "LOST", settledAt: new Date() },
-      });
-
-      try {
-        await prisma.user.update({
+      dbWrites.push(
+        prisma.bet.update({
+          where: { id: bet.id },
+          data: { status: "LOST", settledAt: new Date() },
+        }),
+        prisma.user.update({
           where: { id: bet.userId },
           data: { totalBetsLost: { increment: 1 } },
-        });
-      } catch {}
+        }),
+      );
     }
+
+    const allAgentIds = new Set([...winningBets, ...losingBets].map((b) => b.agentId));
+    for (const agentId of allAgentIds) {
+      const isWinner = agentId === winningAgentId;
+      dbWrites.push(
+        prisma.agent.update({
+          where: { id: agentId },
+          data: {
+            wins: isWinner ? { increment: 1 } : undefined,
+            losses: isWinner ? undefined : { increment: 1 },
+            totalGames: { increment: 1 },
+          },
+        }),
+      );
+    }
+
+    dbWrites.push(
+      prisma.game.update({
+        where: { id: gameId },
+        data: { feeAmount: actualFee },
+      }),
+    );
+
+    await Promise.all(dbWrites);
+
+    const updatedAgents = await prisma.agent.findMany({
+      where: { id: { in: Array.from(allAgentIds) } },
+    });
+
+    await Promise.all(
+      updatedAgents.map((agent) => {
+        const total = agent.wins + agent.losses;
+        return prisma.agent.update({
+          where: { id: agent.id },
+          data: { winRate: total > 0 ? (agent.wins / total) * 100 : null },
+        });
+      }),
+    );
 
     return NextResponse.json({
       resolved: true,
-      winningAgentIds: Array.from(winningAgentIds),
+      winningAgentId,
       winningBets: winningBets.length,
       losingBets: losingBets.length,
       totalPayout: payoutPool,
-      payoutTxIds: txIds,
+      platformFee: actualFee,
+      payoutTxIds: winnerTxIds,
     });
   } catch (error) {
     console.error("[resolve] error", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Resolution failed" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
