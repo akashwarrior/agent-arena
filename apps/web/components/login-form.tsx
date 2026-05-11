@@ -78,7 +78,7 @@ export function LoginForm() {
         <button
           type="button"
           onClick={() => setMode("signin")}
-          className={`text-display-sm uppercase ${
+          className={`text-2xl tracking-tight uppercase ${
             mode === "signin"
               ? "text-foreground"
               : "text-muted-foreground hover:text-foreground"
@@ -89,7 +89,7 @@ export function LoginForm() {
         <button
           type="button"
           onClick={() => setMode("signup")}
-          className={`text-display-sm uppercase ${
+          className={`text-2xl tracking-tight uppercase ${
             mode === "signup"
               ? "text-foreground"
               : "text-muted-foreground hover:text-foreground"
@@ -99,7 +99,7 @@ export function LoginForm() {
         </button>
       </div>
 
-      <p className="text-label mb-6 text-muted-foreground uppercase">
+      <p className="text-[11px] tracking-[0.2em] mb-6 text-muted-foreground uppercase">
         {mode === "signin"
           ? "Enter your credentials to access the arena"
           : "Create an account to start betting"}
@@ -113,7 +113,7 @@ export function LoginForm() {
           <div className="flex flex-col gap-2">
             <Label
               htmlFor="auth-name"
-              className="text-label text-muted-foreground uppercase"
+              className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase"
             >
               Name
             </Label>
@@ -131,7 +131,7 @@ export function LoginForm() {
         <div className="flex flex-col gap-2">
           <Label
             htmlFor="auth-email"
-            className="text-label text-muted-foreground uppercase"
+            className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase"
           >
             Email
           </Label>
@@ -149,7 +149,7 @@ export function LoginForm() {
         <div className="flex flex-col gap-2">
           <Label
             htmlFor="auth-password"
-            className="text-label text-muted-foreground uppercase"
+            className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase"
           >
             Password
           </Label>
@@ -167,7 +167,7 @@ export function LoginForm() {
         <Button
           type="submit"
           disabled={loading}
-          className="text-label mt-2 h-10 w-full bg-primary text-primary-foreground uppercase hover:bg-primary/90"
+          className="text-[11px] tracking-[0.2em] mt-2 h-10 w-full bg-primary text-primary-foreground uppercase hover:bg-primary/90"
         >
           {loading ? (
             <span className="flex items-center gap-2">
@@ -188,7 +188,7 @@ export function LoginForm() {
       <div className="relative my-6">
         <Separator className="bg-border" />
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-label bg-background px-3 text-muted-foreground uppercase">
+          <span className="text-[11px] tracking-[0.2em] bg-background px-3 text-muted-foreground uppercase">
             OR CONTINUE WITH
           </span>
         </div>
@@ -199,7 +199,7 @@ export function LoginForm() {
           variant="outline"
           onClick={() => handleOAuth("google")}
           disabled={loading}
-          className="text-label h-10 rounded-none border-border bg-transparent text-muted-foreground uppercase hover:bg-secondary hover:text-foreground"
+          className="text-[11px] tracking-[0.2em] h-10 rounded-none border-border bg-transparent text-muted-foreground uppercase hover:bg-secondary hover:text-foreground"
         >
           <svg className="mr-2 size-4" viewBox="0 0 488 512">
             <path
@@ -213,7 +213,7 @@ export function LoginForm() {
           variant="outline"
           onClick={() => handleOAuth("github")}
           disabled={loading}
-          className="text-label h-10 rounded-none border-border bg-transparent text-muted-foreground uppercase hover:bg-secondary hover:text-foreground"
+          className="text-[11px] tracking-[0.2em] h-10 rounded-none border-border bg-transparent text-muted-foreground uppercase hover:bg-secondary hover:text-foreground"
         >
           <svg className="mr-2 size-4" viewBox="0 0 30 30">
             <path
