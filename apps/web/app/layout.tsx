@@ -20,7 +20,7 @@ const spaceMono = Space_Mono({
 
 const doto = Doto({
   variable: "--font-display",
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800", "900"],
   display: "swap",
 });
 

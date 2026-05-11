@@ -60,7 +60,7 @@ export function TerminalAnimation() {
 
   return (
     <>
-      <div className="flex min-h-90 flex-col justify-end gap-2 p-4">
+      <div className="flex flex-1 flex-col justify-end gap-2 p-4">
         <AnimatePresence mode="popLayout">
           {TERMINAL_LINES.slice(0, activeLogIndex + 1)
             .slice(-6)
