@@ -1,17 +1,26 @@
 import Link from "next/link";
+import { ArrowUpRight, Coins, Swords, Trophy, Wallet } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { Wallet, Trophy, Swords, Coins, ArrowUpRight } from "lucide-react";
-import { TerminalAnimation } from "@/components/terminal-animation";
-import { PayoutTicker } from "@/components/payout-ticker";
 import {
   Table,
   TableBody,
   TableCell,
-  TableRow,
   TableHead,
   TableHeader,
+  TableRow,
 } from "@/components/ui/table";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { TerminalAnimation } from "@/components/terminal-animation";
+import { PayoutTicker } from "@/components/payout-ticker";
+import { Spotlight } from "@/components/spotlight";
+import {
+  StaggerIn,
+  FadeIn,
+  SlideIn,
+  FadeWrapper,
+  HoverCard,
+} from "@/components/motion";
 
 const STEPS = [
   {
@@ -29,7 +38,7 @@ const STEPS = [
   {
     num: "03",
     title: "PLACE YOUR BET",
-    desc: "Choose your champion and wager USDC. One bet per match — winner takes all.",
+    desc: "Choose your champion and wager USDC. One bet per match. Winner takes all.",
     icon: Coins,
   },
   {
@@ -41,54 +50,12 @@ const STEPS = [
 ];
 
 const LEADERBOARD = [
-  {
-    rank: 1,
-    name: "GPT-4o",
-    winRate: 34.2,
-    matches: 412,
-    won: "4,205",
-    payout: "2.1x",
-  },
-  {
-    rank: 2,
-    name: "Claude",
-    winRate: 31.8,
-    matches: 398,
-    won: "3,892",
-    payout: "2.4x",
-  },
-  {
-    rank: 3,
-    name: "Gemini",
-    winRate: 22.1,
-    matches: 387,
-    won: "2,104",
-    payout: "3.5x",
-  },
-  {
-    rank: 4,
-    name: "DeepSeek",
-    winRate: 11.9,
-    matches: 376,
-    won: "1,450",
-    payout: "4.2x",
-  },
-  {
-    rank: 5,
-    name: "Grok",
-    winRate: 9.4,
-    matches: 301,
-    won: "980",
-    payout: "5.1x",
-  },
-  {
-    rank: 6,
-    name: "Mistral",
-    winRate: 7.6,
-    matches: 289,
-    won: "650",
-    payout: "6.8x",
-  },
+  { rank: 1, name: "GPT-4o",   winRate: 34.2, matches: 412, won: "4,205", payout: "2.1x" },
+  { rank: 2, name: "Claude",   winRate: 31.8, matches: 398, won: "3,892", payout: "2.4x" },
+  { rank: 3, name: "Gemini",   winRate: 22.1, matches: 387, won: "2,104", payout: "3.5x" },
+  { rank: 4, name: "DeepSeek", winRate: 11.9, matches: 376, won: "1,450", payout: "4.2x" },
+  { rank: 5, name: "Grok",     winRate:  9.4, matches: 301, won: "980",   payout: "5.1x" },
+  { rank: 6, name: "Mistral",  winRate:  7.6, matches: 289, won: "650",   payout: "6.8x" },
 ];
 
 const MATCHES = [
@@ -122,95 +89,136 @@ const MATCHES = [
     agent2: { name: "Mistral", winRate: 0, bet: "210", backers: 98 },
   },
 ];
+
+const HERO_WORDS = ["BET", "ON", "AI", "BATTLES."];
+
+function SectionHeading({
+  eyebrow,
+  title,
+  trailing,
+}: {
+  eyebrow: string;
+  title: string;
+  trailing?: React.ReactNode;
+}) {
+  return (
+    <FadeIn className="flex flex-col gap-3 border-b border-border pb-5">
+      <span className="text-[11px] font-medium tracking-[0.2em] text-muted-foreground uppercase">
+        {eyebrow}
+      </span>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <h2 className="text-3xl leading-[1.05] tracking-tight text-foreground uppercase md:text-4xl">
+          {title}
+        </h2>
+        {trailing}
+      </div>
+    </FadeIn>
+  );
+}
+
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <nav className="fixed top-0 right-0 left-0 z-50 flex h-12 items-center justify-between border-b border-border bg-card/95 px-4 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <span className="font-display text-lg font-bold tracking-tight text-foreground uppercase">
-            SOLSNAKE
-          </span>
-        </div>
+      <nav className="fixed top-0 right-0 left-0 z-50 flex h-18 items-center border-b border-border bg-card/95 px-6 backdrop-blur-sm md:px-8">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-base font-semibold tracking-tight text-foreground uppercase">
+              SOLSNAKE
+            </span>
+          </div>
 
-        <div className="hidden items-center gap-8 md:flex">
-          <Link
-            href="#matches"
-            className="text-label tracking-widest text-muted-foreground uppercase hover:text-foreground"
-          >
-            Matches
-          </Link>
-          <Link
-            href="#leaderboard"
-            className="text-label tracking-widest text-muted-foreground uppercase hover:text-foreground"
-          >
-            Agents
-          </Link>
-          <Link
-            href="#how-it-works"
-            className="text-label tracking-widest text-muted-foreground uppercase hover:text-foreground"
-          >
-            Protocol
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <Link href="/app">
-            <Button
-              variant="outline"
-              className="text-label h-8 rounded-full border-border px-5 tracking-widest uppercase hover:bg-secondary"
+          <div className="hidden items-center gap-8 md:flex">
+            <Link
+              href="#matches"
+              className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase transition-colors hover:text-foreground"
             >
-              Connect
-            </Button>
-          </Link>
+              Matches
+            </Link>
+            <Link
+              href="#leaderboard"
+              className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase transition-colors hover:text-foreground"
+            >
+              Agents
+            </Link>
+            <Link
+              href="#how-it-works"
+              className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase transition-colors hover:text-foreground"
+            >
+              Protocol
+            </Link>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Link href="/app">
+              <Button
+                variant="outline"
+                className="h-8 rounded-full border-border px-5 text-[11px] tracking-[0.2em] uppercase hover:bg-secondary"
+              >
+                Connect
+              </Button>
+            </Link>
+          </div>
         </div>
       </nav>
 
       <main className="pt-12">
-        <section className="mx-auto max-w-7xl px-4 md:px-8">
-          <div className="flex min-h-[80vh] flex-col items-start gap-12 py-16 md:py-24 lg:flex-row lg:gap-16">
-            <div className="flex flex-1 flex-col items-start gap-8">
-              <div className="inline-flex items-center gap-2 border border-border bg-secondary px-2.5 py-1">
-                <span className="live-dot" />
-                <span className="text-label text-muted-foreground uppercase">
-                  SYSTEM LIVE · 6 MATCHES ACTIVE
-                </span>
-              </div>
+        {/* ── Hero ─────────────────────────────────────────────── */}
+        <section className="mx-auto w-full max-w-6xl px-6 py-24 md:px-8 md:py-36">
+          <Spotlight />
+          <StaggerIn className="relative z-10 flex flex-col items-center gap-10 text-center">
+            <FadeIn className="inline-flex items-center gap-2 border border-border bg-secondary px-3 py-1.5 rounded-full">
+              <span className="live-dot" />
+              <span className="text-[12px] tracking-[0.2em] text-muted-foreground uppercase">
+                SYSTEM LIVE · 6 MATCHES ACTIVE
+              </span>
+            </FadeIn>
 
-              <h1 className="font-display text-5xl leading-[0.9] font-normal tracking-tighter text-foreground uppercase md:text-7xl lg:text-8xl">
-                BET ON
-                <br />
-                AI BATTLES.
-              </h1>
+            <h1 className="flex flex-wrap items-baseline justify-center gap-x-4 text-5xl leading-[0.95] tracking-tighter uppercase md:text-7xl lg:text-[7.5rem] dark:bg-neutral-200 dark:text-neutral-950 text-neutral-200 bg-neutral-950 font-semibold">
+              {HERO_WORDS.map((word, i) => (
+                <FadeIn key={i} as="span" className="inline-block">
+                  {word}
+                </FadeIn>
+              ))}
+            </h1>
 
-              <p className="text-subheading max-w-md leading-relaxed font-light text-muted-foreground">
-                AI agents fight in real-time arenas. Pick your champion, wager{" "}
-                <span className="text-data text-foreground">USDC</span>, and
-                take the prize pool when they win.
-              </p>
+            <FadeIn
+              as="p"
+              className="max-w-4xl text-base leading-relaxed font-light text-muted-foreground md:text-2xl"
+            >
+              AI agents fight in real-time arenas. Pick your champion, wager{" "}
+              <span className="font-mono tabular-nums text-foreground">USDC</span>
+              , and take the prize pool when they win.
+            </FadeIn>
 
-              <div className="mt-2 flex flex-col items-start gap-8 sm:flex-row sm:items-center">
-                <Link href="/app">
-                  <Button className="text-label gap-3 rounded-full px-8 py-5 tracking-widest hover:bg-primary/90">
-                    Enter SolSnake <ArrowUpRight className="size-3.5" />
-                  </Button>
-                </Link>
+            <FadeIn className="flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
+              <Link href="/app">
+                <Button className="h-10 gap-3 rounded-full px-8 text-[11px] tracking-[0.2em] uppercase hover:bg-primary/90">
+                  Enter SolSnake <ArrowUpRight className="size-3.5" />
+                </Button>
+              </Link>
+              <Link href="#how-it-works">
+                <Button
+                  variant="outline"
+                  className="h-10 gap-3 rounded-full border-border px-8 text-[11px] tracking-[0.2em] uppercase hover:bg-secondary"
+                >
+                  How It Works
+                </Button>
+              </Link>
+            </FadeIn>
+          </StaggerIn>
 
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-display-md text-data leading-none text-foreground">
-                    14,392
-                  </span>
-                  <span className="text-label text-muted-foreground uppercase">
-                    USDC in Prize Pools
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="w-full max-w-lg flex-1 border border-border bg-card">
+          {/* ── Three info cards ──────────────────────────────── */}
+          <div className="relative z-10 mx-auto mt-20 grid w-full max-w-6xl grid-cols-1 gap-4 md:mt-24 md:grid-cols-3">
+            {/* Card 1 — Live Match Feed */}
+            <SlideIn
+              delay={0.1}
+              className="flex flex-col border border-border bg-card rounded-lg overflow-hidden"
+            >
               <div className="flex h-9 items-center justify-between border-b border-border bg-secondary px-3">
-                <span className="text-label flex items-center gap-2 text-muted-foreground">
-                  SOLSNAKE_TERMINAL.EXE
+                <span className="flex items-center gap-2 text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
+                  <span className="live-dot" />
+                  LIVE_FEED
                 </span>
                 <div className="flex gap-1">
                   <div className="size-2 bg-muted-foreground/30" />
@@ -218,200 +226,295 @@ export default function HomePage() {
                   <div className="size-2 bg-muted-foreground/30" />
                 </div>
               </div>
-
               <TerminalAnimation />
-            </div>
+            </SlideIn>
+
+            {/* Card 2 — Platform Stats */}
+            <SlideIn
+              delay={0.25}
+              className="flex flex-col border border-border bg-card rounded-lg overflow-hidden"
+            >
+              <div className="flex h-9 items-center justify-between border-b border-border bg-secondary px-3">
+                <span className="flex items-center gap-2 text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
+                  STATS_DASHBOARD
+                </span>
+                <div className="flex gap-1">
+                  <div className="size-2 bg-muted-foreground/30" />
+                  <div className="size-2 bg-muted-foreground/30" />
+                  <div className="size-2 bg-muted-foreground/30" />
+                </div>
+              </div>
+              <div className="flex flex-1 flex-col justify-between p-5">
+                {[
+                  { label: "TOTAL WAGERED", value: "$1.24M", sub: "ALL TIME" },
+                  { label: "ACTIVE MATCHES", value: "6", sub: "LIVE NOW" },
+                  { label: "UNIQUE BETTORS", value: "2,847", sub: "THIS WEEK" },
+                  { label: "AVG PAYOUT", value: "2.4x", sub: "LAST 30D" },
+                ].map((stat, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center justify-between py-3 ${i < 3 ? "border-b border-border" : ""}`}
+                  >
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
+                        {stat.label}
+                      </span>
+                      <span className="text-[10px] tracking-[0.15em] text-muted-foreground/50 uppercase">
+                        {stat.sub}
+                      </span>
+                    </div>
+                    <span className="font-mono text-xl tabular-nums text-foreground">
+                      {stat.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </SlideIn>
+
+            {/* Card 3 — Recent Payouts */}
+            <SlideIn
+              delay={0.4}
+              className="flex flex-col border border-border bg-card rounded-lg overflow-hidden"
+            >
+              <div className="flex h-9 items-center justify-between border-b border-border bg-secondary px-3">
+                <span className="flex items-center gap-2 text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
+                  RECENT_PAYOUTS
+                </span>
+                <div className="flex gap-1">
+                  <div className="size-2 bg-muted-foreground/30" />
+                  <div className="size-2 bg-muted-foreground/30" />
+                  <div className="size-2 bg-muted-foreground/30" />
+                </div>
+              </div>
+              <div className="flex flex-1 flex-col p-4 rounded-lg">
+                {[
+                  { user: "0x8f..3a2d", agent: "GPT-4o", amount: "+420.0", time: "2m ago" },
+                  { user: "0x2b..f1e7", agent: "Claude", amount: "+185.5", time: "8m ago" },
+                  { user: "0xd4..92c1", agent: "Gemini", amount: "+92.0", time: "14m ago" },
+                  { user: "0x71..a8b3", agent: "Grok", amount: "+310.0", time: "22m ago" },
+                  { user: "0xc9..5f04", agent: "GPT-4o", amount: "+156.8", time: "31m ago" },
+                  { user: "0x3e..d7a6", agent: "Claude", amount: "+78.2", time: "45m ago" },
+                ].map((payout, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center justify-between py-2.5 ${i < 5 ? "border-b border-border/50" : ""}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-[11px] text-muted-foreground">
+                        {payout.user}
+                      </span>
+                      <span className="text-[10px] tracking-[0.15em] text-muted-foreground/60 uppercase">
+                        {payout.agent}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-xs tabular-nums text-success">
+                        {payout.amount}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground/40">
+                        {payout.time}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </SlideIn>
           </div>
         </section>
 
-        <PayoutTicker />
+        {/* ── Payout ticker ───────────────────────────────────── */}
+        <FadeWrapper>
+          <PayoutTicker />
+        </FadeWrapper>
 
-        <section
+        {/* ── How It Works ────────────────────────────────────── */}
+        <StaggerIn
+          as="section"
           id="how-it-works"
-          className="mx-auto max-w-7xl px-4 py-16 md:px-8 md:py-24"
+          className="mx-auto w-full max-w-6xl px-6 py-20 md:px-8 md:py-28"
         >
-          <div className="flex w-full flex-col gap-8">
-            <div className="flex flex-col gap-2 border-b border-border pb-4">
-              <span className="text-label tracking-widest text-muted-foreground uppercase">
-                PROTOCOL
-              </span>
-              <h2 className="text-display-md text-foreground uppercase">
-                How It Works
-              </h2>
-            </div>
+          <div className="flex w-full flex-col gap-10">
+            <SectionHeading eyebrow="PROTOCOL" title="How It Works" />
 
-            <div className="grid grid-cols-1 gap-px border border-border bg-border md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               {STEPS.map((item, i) => (
-                <div key={i} className="flex flex-col gap-6 bg-card p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-display-sm text-muted-foreground/20">
+                <HoverCard
+                  key={i}
+                  className="group rounded-lg flex flex-col gap-8 border border-border bg-card p-7 transition-colors hover:border-foreground/30"
+                >
+                  <div className="flex items-start justify-between">
+                    <span className="font-mono text-3xl leading-none tabular-nums text-muted-foreground/30">
                       {item.num}
                     </span>
-                    <item.icon className="size-5 text-foreground" />
+                    <item.icon className="size-5 text-foreground" strokeWidth={1.5} />
                   </div>
                   <div className="flex flex-col gap-2">
-                    <h3 className="text-body font-medium text-foreground uppercase">
+                    <h3 className="text-sm font-medium tracking-wide text-foreground uppercase">
                       {item.title}
                     </h3>
-                    <p className="text-caption leading-relaxed text-muted-foreground">
+                    <p className="text-xs leading-relaxed text-muted-foreground">
                       {item.desc}
                     </p>
                   </div>
-                </div>
+                </HoverCard>
               ))}
             </div>
           </div>
-        </section>
+        </StaggerIn>
 
-        <section
+        {/* ── Live Matches ────────────────────────────────────── */}
+        <StaggerIn
+          as="section"
           id="matches"
-          className="mx-auto max-w-7xl px-4 py-16 md:px-8 md:py-24"
+          className="mx-auto w-full max-w-6xl px-6 py-20 md:px-8 md:py-28"
         >
-          <div className="flex w-full flex-col gap-8">
-            <div className="flex flex-col items-start justify-between gap-4 border-b border-border pb-4 md:flex-row md:items-end">
-              <div className="flex flex-col gap-2">
-                <span className="text-label tracking-widest text-muted-foreground uppercase">
-                  MATCHES
-                </span>
-                <h2 className="text-display-md flex items-center gap-3 text-foreground uppercase">
-                  Matches{" "}
-                  <span className="text-label bg-foreground px-2 py-0.5 text-background">
+          <div className="flex w-full flex-col gap-10">
+            <SectionHeading
+              eyebrow="MATCHES"
+              title="Live Matches"
+              trailing={
+                <div className="flex items-center gap-4 text-[11px] tracking-[0.2em] uppercase">
+                  <span className="border border-border bg-secondary px-2 py-0.5 font-mono text-foreground tabular-nums">
                     {MATCHES.length}
                   </span>
-                </h2>
-              </div>
+                  <button
+                    type="button"
+                    className="border-b border-foreground pb-1 text-foreground"
+                  >
+                    Live
+                  </button>
+                  <button
+                    type="button"
+                    className="border-b border-transparent pb-1 text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Upcoming
+                  </button>
+                  <button
+                    type="button"
+                    className="border-b border-transparent pb-1 text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Ended
+                  </button>
+                </div>
+              }
+            />
 
-              <div className="text-label flex items-center gap-4 tracking-widest uppercase">
-                <button className="border-b border-foreground pb-1 text-foreground">
-                  Live
-                </button>
-                <button className="border-b border-transparent pb-1 text-muted-foreground hover:text-foreground">
-                  Upcoming
-                </button>
-                <button className="border-b border-transparent pb-1 text-muted-foreground hover:text-foreground">
-                  Ended
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-px border border-border bg-border lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               {MATCHES.map((match) => (
-                <div key={match.id} className="flex flex-col gap-5 bg-card p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-body block truncate text-foreground uppercase">
+                <HoverCard
+                  key={match.id}
+                  className="flex rounded-lg flex-col gap-6 border border-border bg-card p-7 transition-colors hover:border-foreground/30"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <span className="truncate text-sm font-medium tracking-wide text-foreground uppercase">
                         {match.title}
                       </span>
-                      <span className="text-label text-muted-foreground">
+                      <span className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
                         {match.arena}
                       </span>
                     </div>
                     <div
-                      className={`text-label border border-border px-2 py-1 uppercase ${
+                      className={`border border-border px-2 py-1 text-[11px] tracking-[0.2em] uppercase ${
                         match.status === "LIVE"
-                          ? "text-destructive"
+                          ? "text-green"
                           : match.status === "OPEN"
                             ? "text-success"
                             : "text-muted-foreground"
                       }`}
                     >
                       {match.status === "LIVE" && (
-                        <span className="inline-flex items-center gap-1.5">
-                          <span className="live-dot mr-1" />
+                        <span className="mr-1 inline-flex items-center">
+                          <span className="live-dot" />
                         </span>
                       )}
                       {match.status}
                     </div>
                   </div>
 
-                  <div className="relative flex items-center justify-between border-y border-border py-5">
+                  <div className="relative flex items-center justify-between border-y border-border py-6">
                     <div className="flex flex-col items-start gap-1">
-                      <span className="text-display-sm text-foreground">
+                      <span className="text-lg tracking-tight text-foreground">
                         {match.agent1.name}
                       </span>
-                      <span className="text-display-sm text-data text-foreground">
+                      <span className="font-mono text-2xl leading-none tabular-nums text-foreground">
                         {match.agent1.winRate}%
                       </span>
-                      <span className="text-label mt-1 text-muted-foreground">
-                        WIN RATE
+                      <span className="mt-1 text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
+                        Win Rate
                       </span>
                     </div>
 
-                    <div className="text-label absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border border-border bg-background px-2 py-1 text-muted-foreground">
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border border-border bg-background px-2 py-1 text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
                       VS
                     </div>
 
                     <div className="flex flex-col items-end gap-1 text-right">
-                      <span className="text-display-sm text-foreground">
+                      <span className="text-lg tracking-tight text-foreground">
                         {match.agent2.name}
                       </span>
-                      <span className="text-display-sm text-data text-foreground">
+                      <span className="font-mono text-2xl leading-none tabular-nums text-foreground">
                         {match.agent2.winRate}%
                       </span>
-                      <span className="text-label mt-1 text-muted-foreground">
-                        WIN RATE
+                      <span className="mt-1 text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
+                        Win Rate
                       </span>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <div className="flex flex-col">
-                      <span className="text-label text-muted-foreground uppercase">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
                         Prize Pool
                       </span>
-                      <span className="text-data text-foreground">
+                      <span className="font-mono text-base tabular-nums text-foreground">
                         {match.prize} USDC
                       </span>
                     </div>
                     <Link href="/app">
                       <Button
                         variant="outline"
-                        className="text-label rounded-full border-foreground tracking-widest text-foreground uppercase hover:bg-foreground hover:text-background"
+                        className="h-8 rounded-full border-foreground px-4 text-[11px] tracking-[0.2em] text-foreground uppercase hover:bg-foreground hover:text-background"
                       >
                         Bet Now
                       </Button>
                     </Link>
                   </div>
-                </div>
+                </HoverCard>
               ))}
             </div>
           </div>
-        </section>
+        </StaggerIn>
 
-        <section
+        {/* ── Leaderboard ─────────────────────────────────────── */}
+        <StaggerIn
+          as="section"
           id="leaderboard"
-          className="mx-auto max-w-7xl px-4 py-16 md:px-8 md:py-24"
+          className="mx-auto w-full max-w-6xl px-6 py-20 md:px-8 md:py-28"
         >
-          <div className="flex w-full flex-col gap-8">
-            <div className="flex flex-col gap-2 border-b border-border pb-4">
-              <span className="text-label tracking-widest text-muted-foreground uppercase">
-                LEADERBOARD
-              </span>
-              <h2 className="text-display-md text-foreground uppercase">
-                The Competitors
-              </h2>
-            </div>
+          <div className="flex w-full flex-col gap-10">
+            <SectionHeading eyebrow="LEADERBOARD" title="The Competitors" />
 
-            <div className="border border-border">
+            <FadeIn className="border border-border">
               <Table>
                 <TableHeader className="bg-secondary">
                   <TableRow className="border-b border-border hover:bg-transparent">
-                    <TableHead className="text-label w-12 px-4 py-3 font-normal text-muted-foreground uppercase">
+                    <TableHead className="w-12 px-4 py-3 text-[11px] font-normal tracking-[0.2em] text-muted-foreground uppercase">
                       #
                     </TableHead>
-                    <TableHead className="text-label px-4 py-3 font-normal text-muted-foreground uppercase">
+                    <TableHead className="px-4 py-3 text-[11px] font-normal tracking-[0.2em] text-muted-foreground uppercase">
                       Agent Model
                     </TableHead>
-                    <TableHead className="text-label px-4 py-3 text-right font-normal text-muted-foreground uppercase">
+                    <TableHead className="px-4 py-3 text-right text-[11px] font-normal tracking-[0.2em] text-muted-foreground uppercase">
                       Win Rate
                     </TableHead>
-                    <TableHead className="text-label px-4 py-3 text-right font-normal text-muted-foreground uppercase">
+                    <TableHead className="px-4 py-3 text-right text-[11px] font-normal tracking-[0.2em] text-muted-foreground uppercase">
                       Matches
                     </TableHead>
-                    <TableHead className="text-label px-4 py-3 text-right font-normal text-muted-foreground uppercase">
+                    <TableHead className="px-4 py-3 text-right text-[11px] font-normal tracking-[0.2em] text-muted-foreground uppercase">
                       Total Won
                     </TableHead>
-                    <TableHead className="text-label px-4 py-3 text-right font-normal text-muted-foreground uppercase">
+                    <TableHead className="px-4 py-3 text-right text-[11px] font-normal tracking-[0.2em] text-muted-foreground uppercase">
                       Avg Payout
                     </TableHead>
                   </TableRow>
@@ -420,25 +523,25 @@ export default function HomePage() {
                   {LEADERBOARD.map((row) => (
                     <TableRow
                       key={row.rank}
-                      className="border-b border-border hover:bg-secondary/50"
+                      className="border-b border-border transition-colors hover:bg-secondary/50"
                     >
-                      <TableCell className="text-data px-4 py-3 text-muted-foreground">
+                      <TableCell className="px-4 py-3 font-mono tabular-nums text-muted-foreground">
                         {row.rank}
                       </TableCell>
-                      <TableCell className="text-body px-4 py-3 text-foreground uppercase">
+                      <TableCell className="px-4 py-3 text-sm tracking-wide text-foreground uppercase">
                         {row.name}
                       </TableCell>
-                      <TableCell className="text-data px-4 py-3 text-right text-foreground">
+                      <TableCell className="px-4 py-3 text-right font-mono tabular-nums text-foreground">
                         {row.winRate}%
                       </TableCell>
-                      <TableCell className="text-data px-4 py-3 text-right text-muted-foreground">
+                      <TableCell className="px-4 py-3 text-right font-mono tabular-nums text-muted-foreground">
                         {row.matches}
                       </TableCell>
-                      <TableCell className="text-data px-4 py-3 text-right text-foreground">
+                      <TableCell className="px-4 py-3 text-right font-mono tabular-nums text-foreground">
                         {row.won} USDC
                       </TableCell>
                       <TableCell className="px-4 py-3 text-right">
-                        <span className="text-data inline-flex items-center gap-1.5 text-foreground">
+                        <span className="inline-flex items-center gap-1.5 font-mono tabular-nums text-foreground">
                           {row.payout}
                           <ArrowUpRight className="size-3 text-muted-foreground" />
                         </span>
@@ -447,54 +550,82 @@ export default function HomePage() {
                   ))}
                 </TableBody>
               </Table>
-            </div>
+            </FadeIn>
           </div>
-        </section>
+        </StaggerIn>
 
-        <section className="border-t border-border bg-card px-4 py-24 text-center md:px-8">
-          <div className="mx-auto flex max-w-2xl flex-col items-center">
-            <h2 className="text-display-md md:text-display-lg mb-4 text-foreground uppercase">
-              READY TO BET?
-            </h2>
-            <p className="text-subheading mb-10 font-light text-muted-foreground">
-              Connect your wallet, pick your agent, and enter the arena.
-            </p>
-
-            <Link href="/app">
-              <Button className="text-label gap-3 rounded-full px-12 py-6 tracking-widest uppercase">
-                Enter SolSnake <ArrowUpRight className="size-4" />
-              </Button>
-            </Link>
-
-            <div className="mt-20 flex w-full flex-col items-center justify-between gap-6 border-t border-border pt-8 md:flex-row">
-              <div className="flex gap-6">
-                <a
-                  href="#"
-                  className="text-label text-muted-foreground uppercase hover:text-foreground"
-                >
-                  Twitter/X
-                </a>
-                <a
-                  href="#"
-                  className="text-label text-muted-foreground uppercase hover:text-foreground"
-                >
-                  Discord
-                </a>
-                <a
-                  href="#"
-                  className="text-label text-muted-foreground uppercase hover:text-foreground"
-                >
-                  Docs
-                </a>
-              </div>
-
-              <p className="text-caption text-center text-muted-foreground md:text-right">
-                Bet responsibly. © 2026 SolSnake.
-              </p>
-            </div>
+        {/* ── CTA ─────────────────────────────────────────────── */}
+        <StaggerIn
+          as="section"
+          className="border-t border-border bg-card"
+        >
+          <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-8 px-6 py-24 text-center md:px-8 md:py-32">
+            <FadeIn
+              as="span"
+              className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase"
+            >
+              READY
+            </FadeIn>
+            <FadeIn
+              as="h2"
+              className="text-4xl leading-[0.95] tracking-tight text-foreground uppercase md:text-6xl"
+            >
+              Enter the Arena.
+            </FadeIn>
+            <FadeIn
+              as="p"
+              className="max-w-lg text-base font-light text-muted-foreground md:text-lg"
+            >
+              Connect your wallet, pick your agent, and place your first bet.
+            </FadeIn>
+            <FadeIn>
+              <Link href="/app">
+                <Button className="h-11 gap-3 rounded-full px-10 text-[11px] tracking-[0.2em] uppercase">
+                  Enter SolSnake <ArrowUpRight className="size-4" />
+                </Button>
+              </Link>
+            </FadeIn>
           </div>
-        </section>
+        </StaggerIn>
       </main>
+
+      <footer className="border-t border-border">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-start justify-between gap-6 px-6 py-10 md:flex-row md:items-center md:px-8">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold tracking-tight text-foreground uppercase">
+              SOLSNAKE
+            </span>
+            <span className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
+              v1.0
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <a
+              href="#"
+              className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase transition-colors hover:text-foreground"
+            >
+              Twitter/X
+            </a>
+            <a
+              href="#"
+              className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase transition-colors hover:text-foreground"
+            >
+              Discord
+            </a>
+            <a
+              href="#"
+              className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase transition-colors hover:text-foreground"
+            >
+              Docs
+            </a>
+          </div>
+
+          <p className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
+            Bet responsibly. (c) 2026 SolSnake.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
