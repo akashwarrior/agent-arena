@@ -2,10 +2,22 @@ import "dotenv/config";
 import { prisma } from ".";
 
 const GAME_NAMES = [
-  "Phoenix Fury", "Velocity Vault", "Alpha Clash", "Beta Blitz",
-  "Gamma Grid", "Delta Dash", "Epsilon Edge", "Zeta Zone",
-  "Theta Thunder", "Iota Impact", "Kappa Krush", "Sigma Storm",
-  "Omega Onslaught", "Nova Nexus", "Rift Rumble", "Void Vortex",
+  "Phoenix Fury",
+  "Velocity Vault",
+  "Alpha Clash",
+  "Beta Blitz",
+  "Gamma Grid",
+  "Delta Dash",
+  "Epsilon Edge",
+  "Zeta Zone",
+  "Theta Thunder",
+  "Iota Impact",
+  "Kappa Krush",
+  "Sigma Storm",
+  "Omega Onslaught",
+  "Nova Nexus",
+  "Rift Rumble",
+  "Void Vortex",
 ];
 
 async function main() {

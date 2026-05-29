@@ -10,7 +10,8 @@ import {
 
 const PAGE_SIZE = 20;
 const MAX_BET_USDC = 10000;
-const AGENT_SERVER_URL = process.env.AGENT_SERVER_URL ?? "http://localhost:3001";
+const AGENT_SERVER_URL =
+  process.env.AGENT_SERVER_URL ?? "http://localhost:3001";
 
 const fetchHeaders: Record<string, string> = {
   "x-api-key": process.env.INTERNAL_API_KEY as string,
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
       ...bet.game,
       totalPool: Number(bet.game.totalPool) / 1e6,
       feeAmount: bet.game.feeAmount ? Number(bet.game.feeAmount) / 1e6 : null,
-    }
+    },
   }));
 
   return NextResponse.json({
@@ -167,13 +168,13 @@ export async function PATCH(request: NextRequest) {
       where: { gameId, userId: session.user.id, agentId },
       select: {
         id: true,
-      }
+      },
     }),
     prisma.game.findUnique({
       where: { id: gameId },
       select: {
         status: true,
-      }
+      },
     }),
   ]);
 
@@ -203,7 +204,10 @@ export async function PATCH(request: NextRequest) {
 
   if (amountBase === null || amountBase <= 0) {
     return NextResponse.json(
-      { error: "Deposit not found. Wait for your transaction to confirm and try again." },
+      {
+        error:
+          "Deposit not found. Wait for your transaction to confirm and try again.",
+      },
       { status: 400 }
     );
   }
@@ -234,13 +238,14 @@ export async function PATCH(request: NextRequest) {
         },
         select: { id: true },
       }),
-    ]),
+    ])
   );
 
   const params = new URLSearchParams({ pool: String(Number(totalPool) / 1e6) });
 
-  fetch(`${AGENT_SERVER_URL}/bet-confirmed?${params}`, { headers: fetchHeaders })
-    .catch((err) => console.warn("[bets] agent notify failed", err));
+  fetch(`${AGENT_SERVER_URL}/bet-confirmed?${params}`, {
+    headers: fetchHeaders,
+  }).catch((err) => console.warn("[bets] agent notify failed", err));
 
   return NextResponse.json({
     bet: {

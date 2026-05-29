@@ -20,16 +20,17 @@ const fetcher = async (url: string) => {
 
 export function useGames(statusFilter?: "active" | "ended") {
   const { data, error, isLoading, size, setSize, isValidating, mutate } =
-    useSWRInfinite<GamesResponse>((pageIndex, previousPageData) => {
-      const cursor = pageIndex === 0 ? null : previousPageData?.nextCursor;
-      const params = new URLSearchParams();
-      if (cursor) params.set("cursor", cursor);
-      params.set("limit", "15");
-      if (statusFilter) params.set("status", statusFilter);
-      return `/api/games?${params.toString()}`;
-    },
+    useSWRInfinite<GamesResponse>(
+      (pageIdx, previousPageData) => {
+        const cursor = pageIdx === 0 ? null : previousPageData?.nextCursor;
+        const params = new URLSearchParams();
+        if (cursor) params.set("cursor", cursor);
+        params.set("limit", "15");
+        if (statusFilter) params.set("status", statusFilter);
+        return `/api/games?${params.toString()}`;
+      },
       fetcher,
-      { refreshInterval: 5000 },
+      { refreshInterval: 5000 }
     );
 
   const games = data ? data.flatMap((page) => page.games) : [];
@@ -67,16 +68,17 @@ export function useGameDetail(gameId: number | null) {
 
 export function useBets(autoRefresh: boolean) {
   const { data, error, isLoading, size, setSize, isValidating, mutate } =
-    useSWRInfinite<BetsResponse>((pageIndex, previousPageData) => {
-      if (previousPageData && !previousPageData.nextCursor) return null;
-      const cursor = pageIndex === 0 ? null : previousPageData?.nextCursor;
-      const params = new URLSearchParams();
-      if (cursor) params.set("cursor", cursor);
-      params.set("limit", "20");
-      return `/api/bets?${params.toString()}`;
-    },
+    useSWRInfinite<BetsResponse>(
+      (pageIdx, previousPageData) => {
+        if (previousPageData && !previousPageData.nextCursor) return null;
+        const cursor = pageIdx === 0 ? null : previousPageData?.nextCursor;
+        const params = new URLSearchParams();
+        if (cursor) params.set("cursor", cursor);
+        params.set("limit", "20");
+        return `/api/bets?${params.toString()}`;
+      },
       fetcher,
-      { refreshInterval: autoRefresh ? 3000 : undefined },
+      { refreshInterval: autoRefresh ? 3000 : undefined }
     );
 
   const bets = data ? data.flatMap((page) => page.bets) : [];
@@ -114,7 +116,7 @@ export function useLeaderboard() {
 export async function requestBetSwap(
   gameId: number,
   agentId: string,
-  amount: number,
+  amount: number
 ): Promise<BetInitResponse> {
   const res = await fetch("/api/bets", {
     method: "POST",
@@ -136,7 +138,8 @@ export async function confirmBet(
   gameId: number,
   agentId: string,
   walletAddress: string,
-  txHash: string): Promise<BetPlacementResponse> {
+  txHash: string
+): Promise<BetPlacementResponse> {
   const res = await fetch("/api/bets", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },

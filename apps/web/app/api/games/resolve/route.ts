@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { Agent } from "@repo/types";
+import type { Agent } from "@repo/shared";
 import { resolveGameEscrow } from "@/lib/escrow";
 import { PublicKey } from "@solana/web3.js";
 import { prisma } from "@repo/db";
@@ -17,10 +17,16 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { gameId, agentRanks } = body as { gameId: number; agentRanks: Agent[] };
+    const { gameId, agentRanks } = body as {
+      gameId: number;
+      agentRanks: Agent[];
+    };
 
     if (!gameId || !agentRanks?.length) {
-      return NextResponse.json({ error: "gameId and agentRanks required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "gameId and agentRanks required" },
+        { status: 400 }
+      );
     }
 
     const [game, bets] = await Promise.all([
@@ -60,7 +66,11 @@ export async function POST(req: NextRequest) {
     const payoutPool = totalPool - feeAmount;
     const perWinnerPayout = Math.ceil(payoutPool / winningBets.length);
 
-    const validEntrants: { walletAddress: string; betAmount: number; payoutAmount: number }[] = [];
+    const validEntrants: {
+      walletAddress: string;
+      betAmount: number;
+      payoutAmount: number;
+    }[] = [];
     const entrantByBetId = new Map<string, boolean>();
 
     for (const bet of winningBets) {
@@ -89,12 +99,19 @@ export async function POST(req: NextRequest) {
     const dbWrites = [];
 
     for (const bet of winningBets) {
-      const payoutTxHash = entrantByBetId.get(bet.id) ? winnerTxIds[txIdx++] ?? null : null;
+      const payoutTxHash = entrantByBetId.get(bet.id)
+        ? (winnerTxIds[txIdx++] ?? null)
+        : null;
 
       dbWrites.push(
         prisma.bet.update({
           where: { id: bet.id },
-          data: { status: "WON", payout: perWinnerPayout, payoutTxHash, settledAt: new Date() },
+          data: {
+            status: "WON",
+            payout: perWinnerPayout,
+            payoutTxHash,
+            settledAt: new Date(),
+          },
         }),
         prisma.user.update({
           where: { id: bet.userId },
@@ -103,7 +120,7 @@ export async function POST(req: NextRequest) {
             totalPayout: { increment: perWinnerPayout },
             netEarnings: { increment: perWinnerPayout - Number(bet.amount) },
           },
-        }),
+        })
       );
     }
 
@@ -116,11 +133,13 @@ export async function POST(req: NextRequest) {
         prisma.user.update({
           where: { id: bet.userId },
           data: { totalBetsLost: { increment: 1 } },
-        }),
+        })
       );
     }
 
-    const allAgentIds = new Set([...winningBets, ...losingBets].map((b) => b.agentId));
+    const allAgentIds = new Set(
+      [...winningBets, ...losingBets].map((b) => b.agentId)
+    );
     for (const agentId of allAgentIds) {
       const isWinner = agentId === winningAgentId;
       dbWrites.push(
@@ -131,7 +150,7 @@ export async function POST(req: NextRequest) {
             losses: isWinner ? undefined : { increment: 1 },
             totalGames: { increment: 1 },
           },
-        }),
+        })
       );
     }
 
@@ -139,7 +158,7 @@ export async function POST(req: NextRequest) {
       prisma.game.update({
         where: { id: gameId },
         data: { feeAmount: actualFee },
-      }),
+      })
     );
 
     await Promise.all(dbWrites);
@@ -155,7 +174,7 @@ export async function POST(req: NextRequest) {
           where: { id: agent.id },
           data: { winRate: total > 0 ? (agent.wins / total) * 100 : null },
         });
-      }),
+      })
     );
 
     return NextResponse.json({
@@ -171,7 +190,7 @@ export async function POST(req: NextRequest) {
     console.error("[resolve] error", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Resolution failed" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

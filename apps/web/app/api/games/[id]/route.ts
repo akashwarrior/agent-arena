@@ -4,12 +4,30 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+  if (!session?.user) {
+    // TODO: fix authorisation message/code by reusing from one place
+    return NextResponse.json(
+      {
+        error: "Unauthorised",
+      },
+      {
+        status: 404,
+      }
+    );
+  }
+
   const { id } = await params;
 
   const idNum = Number(id);
+  if (!Number.isInteger(idNum) || idNum <= 0) {
+    return NextResponse.json({ error: "Invalid game id" }, { status: 400 });
+  }
 
   const game = await prisma.game.findUnique({
     where: { id: idNum },
@@ -27,22 +45,12 @@ export async function GET(
     return NextResponse.json({ error: "Game not found" }, { status: 404 });
   }
 
-  let userBets: Awaited<ReturnType<typeof prisma.bet.findMany>> = [];
-  try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-    if (session?.user) {
-      userBets = await prisma.bet.findMany({
-        where: {
-          gameId: idNum,
-          userId: session.user.id,
-        },
-      });
-    }
-  } catch {
-    // no session, no bets
-  }
+  const userBets = await prisma.bet.findMany({
+    where: {
+      gameId: idNum,
+      userId: session.user.id,
+    },
+  });
 
   return NextResponse.json({
     game: {
