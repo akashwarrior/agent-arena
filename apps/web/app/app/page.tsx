@@ -1,22 +1,11 @@
 import type { GamesResponse } from "@/lib/swr-types";
+import { SWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
 import { prisma } from "@repo/db";
-import { SWRConfig } from "swr";
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { Provider } from "jotai";
-import { Game } from "@/components/game";
-import { Navbar } from "@/components/navbar";
-import { GameOverlay } from "@/components/game-overlay";
-import { GameStatusBar } from "@/components/game-status-bar";
-import { RightSidebar, RightSidebarContent } from "@/components/right-sidebar";
+import { Cover } from "@/components/ui/cover";
+import { GameMarket } from "@/components/game-marktet";
+import { Zap, Trophy, Clock, Flame } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  LeftSidebar,
-  LeftSidebarContent,
-  LeftSidebarToggle,
-} from "@/components/left-sidebar";
 
 async function getInitialGames() {
   try {
@@ -24,10 +13,9 @@ async function getInitialGames() {
       where: {
         status: {
           in: ["LIVE", "UPCOMING"],
-        }
+        },
       },
       take: 16,
-      orderBy: { startedAt: "asc" },
       include: {
         agents: {
           include: {
@@ -60,86 +48,123 @@ async function getInitialGames() {
   }
 }
 
-export default async function App() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+const filters = [
+  { id: "active", label: "ALL", icon: Zap },
+  { id: "ended", label: "ENDED", icon: Trophy },
+] as const;
 
-  if (!session?.user) {
-    redirect("/login");
-  }
+export default async function App() {
+  const [liveCount, endedCount, totalPoolAgg, initialGames] = await Promise.all(
+    [
+      prisma.game.count({
+        where: { status: "LIVE" },
+      }),
+      prisma.game.count({
+        where: { status: "ENDED" },
+      }),
+      prisma.game.aggregate({
+        where: { status: "LIVE" },
+        _sum: {
+          totalPool: true,
+        },
+      }),
+      getInitialGames(),
+    ]
+  );
 
   const fallback = {
-    [unstable_serialize(() => "/api/games?limit=15&status=active")]: getInitialGames(),
+    [unstable_serialize(() => "/api/games?limit=15&status=active")]:
+      initialGames,
   } as const;
 
   return (
-    <Provider>
-      <SWRConfig value={{ fallback }}>
-        <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
-          <Navbar />
+    <SWRConfig value={{ fallback }}>
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-7xl flex-col px-6 py-8">
+          <div className="mb-6">
+            <h1 className="font-display text-4xl font-black tracking-tight text-foreground sm:text-5xl">
+              LIVE{" "}
+              <span className="text-primary">
+                <Cover>MARKETS</Cover>
+              </span>
+            </h1>
+            <p className="mt-2 max-w-xl text-base text-muted-foreground">
+              Pick your champion. Place your bet. Watch AI agents battle it out
+              in real-time snake arenas.
+            </p>
+          </div>
 
-          <div className="hidden min-h-0 w-full flex-1 lg:flex">
-            <LeftSidebar />
-
-            <main className="relative flex min-w-0 flex-1 flex-col bg-muted">
-              <LeftSidebarToggle />
-              <div className="flex flex-1 items-center justify-center p-4 md:p-6">
-                <div className="relative aspect-video w-full max-w-5xl border border-border bg-card">
-                  <Game />
-                  <GameOverlay />
-                </div>
+          <div className="mb-8 flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 rounded-xl border-2 border-border bg-card px-4 py-2.5 shadow-[2px_2px_0px_0px_var(--border)]">
+              <div className="flex size-7 items-center justify-center rounded-lg border-2 border-destructive/30 bg-destructive/15">
+                <Flame className="size-3.5 text-destructive" />
               </div>
-
-              <GameStatusBar />
-            </main>
-
-            <RightSidebar />
-          </div>
-
-          <div className="flex min-h-0 w-full flex-1 flex-col bg-background lg:hidden">
-            <div className="relative aspect-video w-full border-b border-border bg-card">
-              <Game />
-              <GameOverlay />
+              <div className="flex flex-col">
+                <span className="font-mono text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+                  LIVE MATCHES
+                </span>
+                <span className="font-mono text-lg leading-none font-black text-foreground">
+                  {liveCount}
+                </span>
+              </div>
             </div>
-
-            <div className="flex border-b border-border bg-background">
-              <Tabs defaultValue="games" className="w-full">
-                <TabsList className="flex h-10 w-full rounded-none border-b-0 bg-transparent p-0">
-                  <TabsTrigger
-                    value="games"
-                    className="text-label flex-1 rounded-none text-muted-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                  >
-                    GAMES
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="bets"
-                    className="text-label flex-1 rounded-none text-muted-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                  >
-                    MY BETS
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="info"
-                    className="text-label flex-1 rounded-none text-muted-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                  >
-                    DATA
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="games" className="mt-0">
-                  <LeftSidebarContent tab="games" />
-                </TabsContent>
-                <TabsContent value="bets" className="mt-0">
-                  <LeftSidebarContent tab="bets" />
-                </TabsContent>
-                <TabsContent value="info" className="mt-0">
-                  <RightSidebarContent />
-                </TabsContent>
-              </Tabs>
+            <div className="flex items-center gap-2 rounded-xl border-2 border-border bg-card px-4 py-2.5 shadow-[2px_2px_0px_0px_var(--border)]">
+              <div className="flex size-7 items-center justify-center rounded-lg border-2 border-info/30 bg-info/15">
+                <Clock className="size-3.5 text-info" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-mono text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+                  MATCHES ENDED
+                </span>
+                <span className="font-mono text-lg leading-none font-black text-foreground">
+                  {endedCount}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 rounded-xl border-2 border-border bg-card px-4 py-2.5 shadow-[2px_2px_0px_0px_var(--border)]">
+              <div className="flex size-7 items-center justify-center rounded-lg border-2 border-primary/30 bg-primary/15">
+                <Trophy className="size-3.5 text-primary" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-mono text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+                  TOTAL POOL
+                </span>
+                <span className="font-mono text-lg leading-none font-black text-foreground">
+                  {(Number(totalPoolAgg._sum.totalPool || "0") / 1e6).toFixed(
+                    0
+                  )}{" "}
+                  <span className="text-xs font-bold text-muted-foreground">
+                    USDC
+                  </span>
+                </span>
+              </div>
             </div>
           </div>
+
+          <Tabs defaultValue={filters[0].id} className="w-full">
+            <TabsList className="mb-8 h-auto! items-center gap-3 bg-transparent">
+              {filters.map((f) => (
+                <TabsTrigger
+                  key={f.id}
+                  value={f.id}
+                  className="brutalist-button flex items-center gap-2 rounded-full bg-card px-5 py-2 font-mono text-xs font-bold tracking-wider uppercase active:shadow-[2px_2px_0px_0px_transparent]! data-active:bg-primary! data-active:shadow-[4px_4px_0px_0px_var(--border)]!"
+                >
+                  <f.icon className="size-3.5" />
+                  {f.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            <TabsContent value="active">
+              <GameMarket statusFilter="active" />
+            </TabsContent>
+
+            <TabsContent value="ended">
+              <GameMarket statusFilter="ended" />
+            </TabsContent>
+          </Tabs>
         </div>
-      </SWRConfig>
-    </Provider>
+      </main>
+    </SWRConfig>
   );
 }

@@ -21,7 +21,6 @@ export async function GET(request: NextRequest) {
     where,
     take: limit + 1,
     ...(cursor ? { skip: 1, cursor: { id: Number(cursor) } } : {}),
-    orderBy: { createdAt: statusFilter === "active" ? "asc" : "desc" },
     include: {
       agents: {
         include: {
