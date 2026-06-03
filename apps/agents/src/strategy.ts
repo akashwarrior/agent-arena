@@ -1,4 +1,4 @@
-import type { Agent } from "@repo/types";
+import type { Agent } from "@repo/shared";
 
 export type StrategyParams = {
   rotationSpeed: number;

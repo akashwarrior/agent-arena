@@ -1,4 +1,7 @@
-import type { Food, GameSnapshot, Point, Agent, World } from "@repo/types";
+import { WORLD, type Agent, type Food, type Point } from "@repo/shared";
+import type { LiveGameFrame } from "@/lib/store";
+
+type RenderPoint = Pick<Point, "x" | "y">;
 
 export type Viewport = {
   width: number;
@@ -29,7 +32,7 @@ function clamp(v: number, min: number, max: number): number {
   return v < min ? min : v > max ? max : v;
 }
 
-function inBbox(p: Point, margin: number, b: Bbox): boolean {
+function inBbox(p: RenderPoint, margin: number, b: Bbox): boolean {
   return (
     p.x + margin >= b.x &&
     p.x - margin <= b.x + b.w &&
@@ -40,13 +43,12 @@ function inBbox(p: Point, margin: number, b: Bbox): boolean {
 
 function drawBackground(
   ctx: CanvasRenderingContext2D,
-  world: World,
   view: Bbox
 ) {
   const startX = Math.max(Math.floor(view.x / TILE_SIZE) * TILE_SIZE, 0);
   const startY = Math.max(Math.floor(view.y / TILE_SIZE) * TILE_SIZE, 0);
-  const endX = Math.min(view.x + view.w, world.width);
-  const endY = Math.min(view.y + view.h, world.height);
+  const endX = Math.min(view.x + view.w, WORLD.width);
+  const endY = Math.min(view.y + view.h, WORLD.height);
 
   ctx.fillStyle = "#d4d4d4";
   ctx.fillRect(startX, startY, endX - startX, endY - startY);
@@ -104,7 +106,7 @@ function drawAgentBody(
   }
 }
 
-function rotateLocal(angle: number, x: number, y: number): Point {
+function rotateLocal(angle: number, x: number, y: number): RenderPoint {
   const sin = Math.sin(angle);
   const cos = Math.cos(angle);
   return {
@@ -114,6 +116,8 @@ function rotateLocal(angle: number, x: number, y: number): Point {
 }
 
 function drawEyes(ctx: CanvasRenderingContext2D, agent: Agent) {
+  if (!agent.head) return;
+
   const size = agent.size;
   const whiteRadius = size * EYE_WHITE_RATIO;
   const blackRadius = size * EYE_BLACK_RATIO;
@@ -144,21 +148,24 @@ function drawEyes(ctx: CanvasRenderingContext2D, agent: Agent) {
 }
 
 export function pickCameraTarget(
-  snapshot: GameSnapshot,
+  snapshot: LiveGameFrame,
   followingId: string | null
-): Point & { followingId: string | null } {
+): RenderPoint & { followingId: string | null } {
   if (followingId) {
     const selected = snapshot.agents.find((a) => a.id === followingId);
-    if (selected?.alive) return { ...selected.head, followingId: selected.id };
+    if (selected?.alive && selected.head) {
+      return { ...selected.head, followingId: selected.id };
+    }
   }
 
   const firstLiving = snapshot.agents.find((a) => a.alive);
-  if (firstLiving) return { ...firstLiving.head, followingId: firstLiving.id };
+  if (firstLiving?.head) {
+    return { ...firstLiving.head, followingId: firstLiving.id };
+  }
 
-  const world = snapshot.world;
   return {
-    x: world.width / 2,
-    y: world.height / 2,
+    x: WORLD.width / 2,
+    y: WORLD.height / 2,
     followingId: null,
   };
 }
@@ -166,18 +173,17 @@ export function pickCameraTarget(
 export function advanceCamera(
   camera: Camera,
   viewport: Viewport,
-  world: World
 ): void {
-  const halfW = Math.min(viewport.width / 2, world.width / 2);
-  const halfH = Math.min(viewport.height / 2, world.height / 2);
-  camera.x = clamp(camera.x, halfW, world.width - halfW);
-  camera.y = clamp(camera.y, halfH, world.height - halfH);
+  const halfW = Math.min(viewport.width / 2, WORLD.width / 2);
+  const halfH = Math.min(viewport.height / 2, WORLD.height / 2);
+  camera.x = clamp(camera.x, halfW, WORLD.width - halfW);
+  camera.y = clamp(camera.y, halfH, WORLD.height - halfH);
 }
 
 export function drawFrame(
   ctx: CanvasRenderingContext2D,
   viewport: Viewport,
-  snapshot: GameSnapshot,
+  snapshot: LiveGameFrame,
   camera: Camera
 ): void {
   ctx.setTransform(viewport.ratio, 0, 0, viewport.ratio, 0, 0);
@@ -194,14 +200,14 @@ export function drawFrame(
     h: viewport.height,
   };
 
-  drawBackground(ctx, snapshot.world, view);
+  drawBackground(ctx, view);
   drawFood(ctx, snapshot.food, view);
 
   for (const agent of snapshot.agents) {
     if (!agent.alive) continue;
     drawAgentBody(ctx, agent, view);
 
-    if (inBbox(agent.head, agent.size + 40, view)) {
+    if (agent.head && inBbox(agent.head, agent.size + 40, view)) {
       drawEyes(ctx, agent);
     }
   }

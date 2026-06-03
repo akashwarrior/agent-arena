@@ -1,98 +1,167 @@
-import type {
-  GameAgentMetadata,
-  GameMetadata,
-  ServerMessage,
-} from "@repo/types";
-import type { GameStatus } from "@repo/db";
-import { prisma } from "@repo/db";
-import { GameEngine, type GameConfig } from "./engine";
+import { GameEngine, type GameAgentConfig } from "./engine";
+import { prisma, type Prisma } from "@repo/db";
+import {
+  ServerMessageSchema,
+  toBinary,
+  type Agent,
+  type ServerMessage,
+} from "@repo/shared";
 
-type ClientData = { id: string };
-type Client = Bun.ServerWebSocket<ClientData>;
+type ClientData = Readonly<{ id: string; }>;
+type Client = Readonly<Bun.ServerWebSocket<ClientData>>;
+type ServerPayload = ServerMessage["payload"];
 
-const clients = new Set<Client>();
+const clients: Array<Client> = [];
 
 const PORT = process.env.PORT || 3001;
-const TICK_INTERVAL_MS = Math.floor(1000 / 24);
-const INTERMISSION_MS = 30_000;
-const MATCH_DURATION_MS = 3 * 60 * 1000;
 const WEB_APP_URL = process.env.WEB_APP_URL ?? "http://localhost:3000";
-const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY as string;
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
+
+if (!INTERNAL_API_KEY) {
+  throw new Error("INTERNAL_API_KEY environment variable is required");
+}
 
 const headers: Record<string, string> = {
   "x-api-key": INTERNAL_API_KEY,
 } as const;
 
+const MAX_AGENTS = 5 as const;
 const GAME_NAMES = [
-  "Phoenix Fury", "Velocity Vault", "Alpha Clash", "Beta Blitz",
-  "Gamma Grid", "Delta Dash", "Epsilon Edge", "Zeta Zone",
-  "Theta Thunder", "Iota Impact", "Kappa Krush", "Sigma Storm",
-  "Omega Onslaught", "Nova Nexus", "Rift Rumble", "Void Vortex",
-];
+  "Phoenix Fury",
+  "Velocity Vault",
+  "Alpha Clash",
+  "Beta Blitz",
+  "Gamma Grid",
+  "Delta Dash",
+  "Epsilon Edge",
+  "Zeta Zone",
+  "Theta Thunder",
+  "Iota Impact",
+  "Kappa Krush",
+  "Sigma Storm",
+  "Omega Onslaught",
+  "Nova Nexus",
+  "Rift Rumble",
+  "Void Vortex",
+] as const;
 
-const AGENT_COUNT = 5;
+const engine = new GameEngine(MAX_AGENTS);
+let clientId = 0;
 
-let engine: GameEngine | null = null;
-let lastEngineTickAt = Date.now();
-let nextMatchCheckAt = Date.now();
-let nextMatchAt = Date.now();
-let transitioning = false;
-let showWinnerUntil = 0;
-let lastCountdownBroadcast = 0;
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
-
-function makeClientId(): string {
-  return `c-${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
-}
-
-function scheduleMatchCheck(delayMs: number): void {
-  nextMatchCheckAt = Date.now() + Math.max(0, delayMs);
-}
-
-function broadcast(message: ServerMessage): void {
-  const payload = JSON.stringify(message);
-  for (const client of clients) client.send(payload);
-}
-
-function broadcastSnapshot(): void {
-  if (!engine) return;
-  broadcast({ type: "snapshot", data: engine.getSnapshot() });
-}
-
-function broadcastStatus(status: GameMetadata): void {
-  broadcast({ type: "status", data: status });
-}
-
-async function updateGameStatus(
-  gameId: number,
-  status: GameStatus,
-  winnerAgentId?: string | null,
-) {
-  try {
-    return await prisma.game.update({
-      where: { id: gameId },
-      data: {
-        status,
-        ...(winnerAgentId !== undefined ? { winnerAgentId } : {}),
-        ...(status === "LIVE" ? { startedAt: new Date() } : {}),
-        ...(status === "ENDED" ? { endedAt: new Date() } : {}),
+const gameScheduleSelect = {
+  id: true,
+  name: true,
+  totalPool: true,
+  participants: {
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+    select: {
+      agent: {
+        select: {
+          id: true,
+          name: true,
+          color: true,
+          accent: true,
+        },
       },
-    });
-  } catch (error) {
-    console.error("[arena] failed to update game status", { gameId, status, error });
-    return null;
+    },
+  },
+} satisfies Prisma.GameSelect;
+
+type ScheduledGame = Prisma.GameGetPayload<{
+  select: typeof gameScheduleSelect;
+}>;
+
+function getPlatformFeeBps(): number {
+  const feeBps = Number(process.env.NEXT_PUBLIC_PLATFORM_FEE_BPS ?? 100);
+
+  if (!Number.isInteger(feeBps) || feeBps < 0 || feeBps > 10_000) {
+    throw new Error("NEXT_PUBLIC_PLATFORM_FEE_BPS must be between 0 and 10000");
+  }
+
+  return feeBps;
+}
+
+const PLATFORM_FEE_BPS = getPlatformFeeBps();
+
+function encodePayload(payload: ServerPayload): Uint8Array {
+  return toBinary(ServerMessageSchema, {
+    $typeName: "ServerMessage",
+    payload,
+  } as const);
+}
+
+function broadcast(payload: ServerPayload): void {
+  if (clients.length === 0) return;
+
+  const encoded = encodePayload(payload);
+  for (const client of clients) {
+    client.send(encoded);
   }
 }
 
-async function fetchNextGame() {
+function tickEngine(lastTickAt: number, now: number): number {
+  const deltaSeconds = Math.max(0, Math.min((now - lastTickAt) / 1000, 0.12));
+  engine.tick(deltaSeconds, now);
+  return now;
+}
+
+function createTickPayload(): ServerPayload {
+  return {
+    case: "tick",
+    value: {
+      $typeName: "LiveMatchTick",
+      gameId: engine.getId(),
+      remainingMs: engine.getRemainingMs(),
+      food: engine.getFood(),
+      agents: engine.getAgents(),
+    },
+  };
+}
+
+function createMatchEndPayload(): ServerPayload | null {
+  const winner = engine.getWinner();
+  if (!winner) return null;
+
+  return {
+    case: "matchEnd",
+    value: {
+      $typeName: "MatchEnd",
+      gameId: engine.getId(),
+      winner,
+    },
+  };
+}
+
+function removeClient(client: Client): void {
+  const index = clients.indexOf(client);
+  if (index === -1) return;
+
+  const last = clients.pop()!;
+  if (index < clients.length) {
+    clients[index] = last;
+  }
+}
+
+function parseGameId(value: string | null): number | null {
+  if (!value) return null;
+
+  const gameId = Number(value);
+  if (!Number.isSafeInteger(gameId) || gameId <= 0) return null;
+
+  return gameId;
+}
+
+async function fetchNextGame(): Promise<ScheduledGame | null> {
   try {
     return await prisma.game.findFirst({
-      where: { status: "UPCOMING" },
-      orderBy: { createdAt: "asc" },
-      include: { agents: { include: { agent: true } } },
+      where: {
+        status: "UPCOMING",
+        participants: {
+          some: {},
+        },
+      },
+      orderBy: { id: "asc" },
+      select: gameScheduleSelect,
     });
   } catch (error) {
     console.error("[arena] failed to fetch next game", error);
@@ -100,214 +169,358 @@ async function fetchNextGame() {
   }
 }
 
-async function createNextGame(): Promise<void> {
+async function createNextGame() {
   try {
-    const agents = await prisma.agent.findMany({ take: AGENT_COUNT });
-    if (agents.length === 0) {
-      console.warn("[arena] no agents in database, cannot create game");
+    const [agents, escrowAccount] = await Promise.all([
+      prisma.agent.findMany({
+        take: MAX_AGENTS,
+        orderBy: { createdAt: "asc" },
+        select: { id: true },
+      }),
+      prisma.escrowAccount.findFirst({
+        where: {
+          status: "ACTIVE",
+        },
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+        },
+      }),
+    ]);
+
+    if (agents.length < 2) {
+      console.warn("[arena] at least two agents are required to create a game");
       return;
     }
+
+    if (!escrowAccount) {
+      console.warn(
+        "[arena] no active USDC escrow in database, cannot create game",
+      );
+      return;
+    }
+
     const name = GAME_NAMES[Math.floor(Math.random() * GAME_NAMES.length)]!;
     const game = await prisma.game.create({
       data: {
         name,
         status: "UPCOMING",
-        agents: { create: agents.map((a) => ({ agentId: a.id })) },
+        escrowAccountId: escrowAccount.id,
+        feeBps: PLATFORM_FEE_BPS,
+        participants: {
+          create: agents.map((agent, position) => ({
+            agentId: agent.id,
+            position: position + 1,
+          })),
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        status: true,
       },
     });
-    console.log("[arena] created new upcoming game", { gameId: game.id, name });
+    console.log({
+      "Created new game :": game,
+    });
   } catch (error) {
     console.error("[arena] failed to create next game", error);
   }
 }
-
-function toGameMetadata(
-  game: { id: number; name: string; totalPool: bigint; startedAt: Date | null; agents: { agent: GameAgentMetadata }[] },
-  status: GameStatus = "UPCOMING",
-): GameMetadata {
-  return {
-    id: game.id,
-    name: game.name,
-    pool: Number(game.totalPool) / 1e6,
-    status,
-    startedAt: game.startedAt?.toISOString(),
-    agents: game.agents.map((x) => x.agent),
-  };
-}
-
-function getLiveMetadata(activeEngine: GameEngine): GameMetadata {
-  return {
-    id: activeEngine.id,
-    name: activeEngine.name,
-    pool: activeEngine.pool,
-    status: "LIVE",
-    startedAt: new Date(activeEngine.getSnapshot().startedAt).toISOString(),
-    agents: activeEngine.getAgents(),
-  };
-}
-
-function handleBetConfirmed(body: { gameId: number; pool: number }): void {
-  const { gameId, pool } = body;
-  if (
-    gameId === undefined || gameId === null ||
-    pool === undefined || pool === null ||
-    !engine || engine.id !== gameId
-  ) return;
-
-  engine.pool = pool;
-  broadcastStatus(getLiveMetadata(engine));
-  console.log("[arena] pool updated via bet", { gameId, pool });
-}
-
-async function finishCurrentMatch(): Promise<void> {
-  if (!engine) return;
-
-  engine.finishMatch();
-
-  const id = engine.id;
-  const winner = engine.getWinner()!;
-  const agents = engine.getAgents();
-
-  engine = null;
-
-  broadcastSnapshot();
-  broadcast({ type: "winner", data: { gameId: id, winnerId: winner.id, winnerName: winner.name } });
-
-  showWinnerUntil = Date.now() + 6_000;
-  nextMatchAt = Date.now() + INTERMISSION_MS;
-  scheduleMatchCheck(INTERMISSION_MS);
-
-  fetch(`${WEB_APP_URL}/api/games/resolve`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ gameId: id, agentRanks: agents }),
-  }).catch((err) =>
-    console.error("[arena] resolve failed", { gameId: id, err })
+async function persistMatchResult(
+  gameId: number,
+  agentRanks: ReadonlyArray<Agent>,
+): Promise<void> {
+  const finishedAt = new Date();
+  const participantRows = await prisma.gameParticipant.findMany({
+    where: {
+      gameId,
+      agentId: {
+        in: agentRanks.map((agent) => agent.id),
+      },
+    },
+    select: {
+      id: true,
+      agentId: true,
+    },
+  });
+  const participantByAgentId = new Map(
+    participantRows.map((participant) => [participant.agentId, participant]),
   );
+  const winnerAgent = agentRanks[0] ?? null;
+  const winnerParticipantId = winnerAgent
+    ? (participantByAgentId.get(winnerAgent.id)?.id ?? null)
+    : null;
 
-  const upcomingCount = await prisma.game.count({ where: { status: "UPCOMING" } });
-  if (upcomingCount < 10) {
-    await Promise.all([
-      Array.from({ length: 10 - upcomingCount }, createNextGame),
-    ]);
-  }
+  await prisma.$transaction(async (tx) => {
+    await tx.game.update({
+      where: { id: gameId },
+      data: {
+        status: "ENDED",
+        endedAt: finishedAt,
+        winnerParticipantId,
+      },
+      select: { id: true },
+    });
 
-  transitioning = false;
+    for (const [index, agent] of agentRanks.entries()) {
+      const participant = participantByAgentId.get(agent.id);
+      if (!participant) {
+        console.warn("[arena] missing participant for agent result", {
+          gameId,
+          agentId: agent.id,
+        });
+        continue;
+      }
+
+      await tx.gameParticipant.update({
+        where: { id: participant.id },
+        data: {
+          status: index === 0 ? "WINNER" : "LOSER",
+          finalRank: agent.rank ?? index + 1,
+          finalScore: agent.score,
+          eliminatedAt: agent.alive ? null : finishedAt,
+        },
+        select: { id: true },
+      });
+    }
+  });
 }
 
-function tickLoop(): void {
-  const now = Date.now();
+async function resolveMatch(): Promise<void> {
+  try {
+    const id = engine.getId();
+    const agents = engine.getAgents();
+    await persistMatchResult(id, agents);
 
-  if (!engine) {
-    if (!transitioning && now >= nextMatchCheckAt) {
-      transitioning = true;
-      startNextMatch();
-      return;
+    // TODO: push settlement to a queue so payout/refund processing retries safely.
+    try {
+      const response = await fetch(
+        `${WEB_APP_URL}/api/games/${id}/settlement`,
+        {
+          method: "POST",
+          headers: headers,
+          body: JSON.stringify({ agentRanks: agents }),
+        },
+      );
+      if (!response.ok) {
+        console.error("[arena] settlement request failed", {
+          gameId: id,
+          status: response.status,
+          body: await response.text(),
+        });
+      }
+    } catch (err) {
+      console.error("[arena] settlement request failed", { gameId: id, err });
     }
 
-    if (now < showWinnerUntil) return;
-
-    if (now - lastCountdownBroadcast < 500) return;
-    lastCountdownBroadcast = now;
-
-    const remaining = Math.max(0, Math.ceil((nextMatchAt - now) / 1000));
-    broadcastStatus({
-      id: 0,
-      name: "Next match incoming...",
-      pool: 0,
-      status: "ENDED",
-      remainingSeconds: remaining,
-      agents: [],
+    const upcomingCount = await prisma.game.count({
+      where: { status: "UPCOMING" },
     });
-    return;
+
+    if (upcomingCount < 10) {
+      await Promise.all(
+        Array.from(
+          { length: 10 - upcomingCount },
+          async () => await createNextGame(),
+        ),
+      );
+    }
+  } catch (error) {
+    console.error("[arena] failed to refill upcoming games", error);
   }
-
-  const deltaSeconds = clamp((now - lastEngineTickAt) / 1000, 0, 0.12);
-  lastEngineTickAt = now;
-  engine.tick(deltaSeconds, now);
-
-  if (engine.isMatchComplete()) {
-    transitioning = true;
-    finishCurrentMatch();
-    return;
-  }
-
-  broadcastSnapshot();
 }
 
-async function startNextMatch(): Promise<void> {
+const INTERVAL_DURATION = 30 * 1000;
+const GAME_TICK = Math.round(1000 / 24);
+
+async function startGameLoop() {
+  let lastEngineTickAt = Date.now();
+  let tick_ms = GAME_TICK;
+
+  while (true) {
+    const now = Date.now();
+
+    switch (engine.getStatus()) {
+      case "RUNNING":
+        lastEngineTickAt = tickEngine(lastEngineTickAt, now);
+        if (engine.getStatus() === "ENDED") {
+          const endPayload = createMatchEndPayload();
+          if (endPayload) broadcast(endPayload);
+          await resolveMatch();
+          break;
+        }
+        broadcast(createTickPayload());
+        tick_ms = GAME_TICK;
+        break;
+
+      case "ENDED":
+        if (!(await scheduleNextMatch(now + INTERVAL_DURATION))) {
+          tick_ms = 200;
+        } else {
+          tick_ms = 1000;
+        }
+        break;
+
+      case "INTERVAL":
+        const startedAt = engine.getStartedAt();
+        if (startedAt <= now) {
+          try {
+            const started = await prisma.game.updateMany({
+              where: { id: engine.getId(), status: "UPCOMING" },
+              data: { status: "LIVE" },
+            });
+            if (started.count !== 1) {
+              tick_ms = 200;
+              break;
+            }
+          } catch {
+            tick_ms = 200;
+            break;
+          }
+          tick_ms = GAME_TICK;
+          lastEngineTickAt = now;
+          engine.startGame();
+          break;
+        }
+        tick_ms = Math.max(100, Math.min(1000, startedAt - now));
+        break;
+    }
+
+    const diff = Date.now() - now;
+    await new Promise((r) =>
+      setTimeout(r, diff > tick_ms ? 0 : tick_ms - diff),
+    );
+  }
+}
+
+async function scheduleNextMatch(time: number): Promise<boolean> {
   const game = await fetchNextGame();
 
   if (!game) {
     console.log("[arena] no upcoming games, creating one...");
     await createNextGame();
-    scheduleMatchCheck(2_000);
-    transitioning = false;
-    return;
+    return false;
   }
 
-  const liveGame = await updateGameStatus(game.id, "LIVE");
-  if (!liveGame) {
-    scheduleMatchCheck(1_000);
-    transitioning = false;
-    return;
+  if (game.participants.length < 2) {
+    console.warn("[arena] upcoming game has fewer than two participants", {
+      gameId: game.id,
+    });
+    await prisma.game.update({
+      where: { id: game.id },
+      data: {
+        status: "CANCELLED",
+        cancelledAt: new Date(),
+      },
+      select: { id: true },
+    });
+    return false;
   }
 
-  const startedAtMs = liveGame.startedAt?.getTime() ?? Date.now();
-  const config: GameConfig = {
+  const agents: GameAgentConfig[] = game.participants.map(
+    (participant) => participant.agent,
+  );
+
+  try {
+    await prisma.$transaction([
+      prisma.game.update({
+        where: { id: game.id },
+        data: {
+          startedAt: new Date(time),
+          winnerParticipantId: null,
+          endedAt: null,
+          settledAt: null,
+          cancelledAt: null,
+        },
+        select: { id: true },
+      }),
+      prisma.gameParticipant.updateMany({
+        where: { gameId: game.id },
+        data: {
+          status: "ACTIVE",
+          finalRank: null,
+          finalScore: null,
+          eliminatedAt: null,
+        },
+      }),
+    ]);
+  } catch (error) {
+    console.error("[arena] failed to update game status", {
+      gameId: game.id,
+      error,
+    });
+    return false;
+  }
+
+  engine.scheduleGame({
     id: game.id,
     name: game.name,
-    pool: Number(game.totalPool) / 1e6,
-    durationMs: MATCH_DURATION_MS,
-    startedAtMs,
-    agents: game.agents.map((x) => x.agent),
-  };
-
-  engine = new GameEngine(config);
-  lastEngineTickAt = Date.now();
-  transitioning = false;
-
-  broadcastStatus({
-    ...toGameMetadata(game, "LIVE"),
-    startedAt: new Date(startedAtMs).toISOString(),
+    startedAt: time,
+    agents,
   });
 
-  console.log("[arena] starting match", { gameId: game.id, name: game.name, durationMs: MATCH_DURATION_MS });
+  console.log("[arena] starting match", {
+    gameId: game.id,
+    name: game.name,
+  });
+  return true;
 }
 
-const server = Bun.serve<ClientData, never>({
+async function init() {
+  const liveGames = await prisma.game.findMany({
+    where: { status: "LIVE" },
+    select: { id: true },
+  });
+
+  const cancelledAt = new Date();
+  for (const game of liveGames) {
+    // TODO: create refund payments for cancelled live games.
+    await prisma.$transaction([
+      prisma.bet.updateMany({
+        where: { gameId: game.id, status: "ACTIVE" },
+        data: { status: "REFUNDED", settledAt: cancelledAt },
+      }),
+      prisma.game.update({
+        where: { id: game.id },
+        data: {
+          status: "CANCELLED",
+          endedAt: cancelledAt,
+          cancelledAt,
+        },
+        select: { id: true },
+      }),
+    ]);
+  }
+
+  await startGameLoop();
+}
+
+const WEB_APP_ORIGIN = new URL(WEB_APP_URL).origin;
+
+const server = Bun.serve<ClientData>({
   port: PORT,
 
-  async fetch(request, server) {
+  fetch(request, server) {
     const url = new URL(request.url);
 
-    if (url.pathname === "/bet-confirmed") {
-      if (INTERNAL_API_KEY) {
-        const key = request.headers.get("x-api-key");
-        if (key !== INTERNAL_API_KEY) {
-          return new Response("Unauthorized", { status: 401 });
-        }
-      }
-      if (engine?.id) {
-        const poolParam = url.searchParams.get("pool");
-        if (poolParam) {
-          const pool = parseFloat(poolParam);
-          if (!isNaN(pool) && pool > 0) {
-            handleBetConfirmed({ gameId: engine.id, pool });
-          }
-        }
-      }
-      return new Response("ok", { status: 200 });
+    const requestedGameId = parseGameId(url.searchParams.get("gameId"));
+    if (requestedGameId !== engine.getId() || engine.getStatus() !== "RUNNING") {
+      return new Response("Invalid gameId", { status: 400 });
     }
 
     const origin = request.headers.get("origin");
-    if (!origin || origin !== WEB_APP_URL) {
+    if (!origin || origin !== WEB_APP_ORIGIN) {
       return new Response("Forbidden", { status: 403 });
     }
 
+    const upgraded = server.upgrade(request, {
+      data: {
+        id: `c-${clientId++}`,
+      },
+    });
 
-    const ok = server.upgrade(request, { data: { id: makeClientId() } });
-    if (ok) return;
+    if (upgraded) return;
 
     return new Response(
       "Upgrade required: connect via WebSocket to receive game state.",
@@ -317,62 +530,28 @@ const server = Bun.serve<ClientData, never>({
 
   websocket: {
     open(client) {
-      clients.add(client);
+      clients.push(client);
       console.log("[arena] client connected", {
         clientId: client.data.id,
-        clients: clients.size,
+        clients: clients.length,
       });
-      if (engine) {
-        client.send(
-          JSON.stringify({ type: "status", data: getLiveMetadata(engine) }),
-        );
-        client.send(
-          JSON.stringify({ type: "snapshot", data: engine.getSnapshot() }),
-        );
-      }
     },
 
-    message(client, raw) { },
+    message() { },
 
-    close(client, code, reason) {
-      clients.delete(client);
+    close(client) {
+      removeClient(client);
       console.log("[arena] client disconnected", {
         clientId: client.data.id,
-        clients: clients.size,
-        code,
-        reason: reason || undefined,
+        clients: clients.length,
       });
     },
   },
 });
 
-async function init() {
-  const liveGames = await prisma.game.findMany({
-    where: { status: "LIVE" },
-    include: { bets: { where: { status: "PENDING" } } },
-  });
+console.log("[arena] listening", { url: `ws://localhost:${server.port}` });
 
-  for (const game of liveGames) {
-    const pendingBets = game.bets;
-
-    await prisma.bet.updateMany({
-      where: { id: { in: pendingBets.map((b) => b.id) } },
-      data: { status: "REFUNDED", },
-    });
-
-    // refund bets via escrow cancellation
-
-    await prisma.game.update({
-      where: { id: game.id },
-      data: { status: "CANCELLED", endedAt: new Date() },
-    });
-  }
-  setInterval(tickLoop, TICK_INTERVAL_MS);
-}
-
-await init().catch((err) => {
+init().catch((err) => {
   console.error("[arena] initialization failed", err);
   process.exit(1);
 });
-
-console.log("[arena] listening", { url: `ws://localhost:${server.port}` });

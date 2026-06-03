@@ -1,0 +1,21 @@
+{
+  "name": "@repo/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "proto:gen": "buf generate"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./proto": "./src/game_pb.ts"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "^2.12.0",
+    "@repo/db": "workspace:*"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "^1.69.0",
+    "@bufbuild/protoc-gen-es": "^2.12.0"
+  }
+}

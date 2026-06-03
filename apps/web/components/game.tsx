@@ -1,23 +1,25 @@
 "use client";
 
-import type { GameSnapshot, ServerMessage } from "@repo/types";
+import { fromBinary, ServerMessageSchema } from "@repo/shared";
 import { useEffect, useRef } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
-import { advanceCamera, drawFrame, pickCameraTarget } from "@/lib/renderer";
+import {
+  advanceCamera,
+  drawFrame,
+  pickCameraTarget,
+} from "@/lib/renderer";
 import {
   spectatingAgentAtom,
-  gameSnapshotAtom,
   connectionStatusAtom,
-  matchWinnerAtom,
-  gameMetadataAtom,
-  matchStartCountdownAtom,
+  gameServerEventAtom,
+  type LiveGameFrame,
 } from "@/lib/store";
 
 const MAX_DEVICE_PIXEL_RATIO = 1.5;
 
 const WS_URL = process.env.NEXT_PUBLIC_GAME_WS_URL ?? "ws://localhost:3001";
 
-export function Game() {
+export function Game({ gameId }: { gameId: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const spectatorRef = useRef<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -25,11 +27,8 @@ export function Game() {
   const spectatingAgent = useAtomValue(spectatingAgentAtom);
 
   const setSpectatingAgent = useSetAtom(spectatingAgentAtom);
-  const setGameSnapshot = useSetAtom(gameSnapshotAtom);
   const setConnectionStatus = useSetAtom(connectionStatusAtom);
-  const setMatchWinner = useSetAtom(matchWinnerAtom);
-  const setGameMetadata = useSetAtom(gameMetadataAtom);
-  const setMatchStartCountdown = useSetAtom(matchStartCountdownAtom);
+  const publishServerEvent = useSetAtom(gameServerEventAtom);
 
   useEffect(() => {
     spectatorRef.current = spectatingAgent;
@@ -47,7 +46,10 @@ export function Game() {
       const rect = canvas.getBoundingClientRect();
       const width = Math.max(1, Math.floor(rect.width));
       const height = Math.max(1, Math.floor(rect.height));
-      const ratio = Math.min(window.devicePixelRatio || 1, MAX_DEVICE_PIXEL_RATIO);
+      const ratio = Math.min(
+        devicePixelRatio || 1,
+        MAX_DEVICE_PIXEL_RATIO
+      );
       viewport = { width, height, ratio };
 
       const targetW = Math.floor(width * ratio);
@@ -56,66 +58,56 @@ export function Game() {
       if (canvas.height !== targetH) canvas.height = targetH;
     };
 
-    const cancelRender = () => {
-      if (animationFrame) {
-        window.cancelAnimationFrame(animationFrame);
-        animationFrame = 0;
-      }
-    };
-
-    const renderGame = (snapshot: GameSnapshot) => {
+    const renderGame = (snapshot: LiveGameFrame) => {
       const camera = pickCameraTarget(snapshot, spectatorRef.current);
       if (camera.followingId !== spectatorRef.current) {
         spectatorRef.current = camera.followingId;
         setSpectatingAgent(camera.followingId);
       }
-      advanceCamera(camera, viewport, snapshot.world);
+      advanceCamera(camera, viewport);
       drawFrame(ctx, viewport, snapshot, camera);
     };
 
+    const socketUrl = new URL(WS_URL);
+    socketUrl.searchParams.set("gameId", String(gameId));
+
     setConnectionStatus("connecting");
-    const socket = new WebSocket(WS_URL);
+    const socket = new WebSocket(socketUrl);
+    socket.binaryType = "arraybuffer";
 
     socket.addEventListener("open", () => {
       setConnectionStatus("connected");
+      if (audioRef.current?.paused) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(() => { });
+      }
     });
 
-    socket.addEventListener("message", (event) => {
-      if (typeof event.data !== "string") return;
+    socket.addEventListener("message", ({ data: message }) => {
       try {
-        const message = JSON.parse(event.data) as ServerMessage;
+        const { payload } = fromBinary(
+          ServerMessageSchema,
+          new Uint8Array(message)
+        );
 
-        switch (message.type) {
-          case "snapshot":
-            setGameSnapshot(message.data);
-            cancelRender();
-            animationFrame = window.requestAnimationFrame(() => renderGame(message.data));
-            break;
-
-          case "status":
-            setMatchWinner(null);
-            setGameMetadata(message.data);
-            if (message.data.status === "LIVE") {
-              setMatchStartCountdown(null);
-              if (audioRef.current?.paused) {
-                audioRef.current.currentTime = 0;
-                audioRef.current.play().catch(() => {});
-              }
-            } else {
-              setGameSnapshot(null);
-              ctx.reset();
-              audioRef.current?.pause();
-              setMatchStartCountdown(message.data.remainingSeconds ?? null);
+        switch (payload.case) {
+          case "tick":
+            if (animationFrame) {
+              cancelAnimationFrame(animationFrame);
             }
+            animationFrame = requestAnimationFrame(() => renderGame(payload.value));
             break;
 
-          case "winner":
-            setMatchWinner(message.data);
-            setGameSnapshot(null);
+          case "matchEnd":
             ctx.reset();
             audioRef.current?.pause();
             break;
+
+          case undefined:
+            break;
         }
+
+        publishServerEvent(payload);
       } catch {
         // Ignore malformed messages
       }
@@ -123,10 +115,11 @@ export function Game() {
 
     socket.addEventListener("close", () => {
       setConnectionStatus("disconnected");
+      audioRef.current?.pause();
     });
 
     socket.addEventListener("error", () => {
-      socket?.close();
+      socket.close();
     });
 
     const observer = new ResizeObserver(resize);
@@ -134,8 +127,11 @@ export function Game() {
     resize();
 
     return () => {
-      cancelRender();
-      socket?.close();
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+        animationFrame = 0;
+      }
+      socket.close();
       observer.disconnect();
     };
   }, []);

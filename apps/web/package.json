@@ -14,7 +14,7 @@
   "dependencies": {
     "@base-ui/react": "^1.4.1",
     "@repo/db": "workspace:*",
-    "@repo/types": "workspace:*",
+    "@repo/shared": "workspace:*",
     "@solana/client": "^1.7.0",
     "@solana/kit": "^6.9.0",
     "@solana/react-hooks": "^1.4.1",
