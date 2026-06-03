@@ -71,7 +71,7 @@ export function UpcomingLayout({
           </h2>
           <div className="mt-4 inline-block -rotate-2 transform border-2 border-black bg-primary px-4 py-2 text-primary-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] md:mt-6 md:px-6 md:py-3 md:shadow-[6px_6px_0px_0px_rgba(0,0,0,0.5)]">
             <p className="font-mono text-xl font-black tracking-wider uppercase md:text-3xl">
-              {startedAt ? `${timeLeft}` : "TBA"}
+              {game.startedAt ? `${timeLeft}` : "TBA"}
             </p>
           </div>
         </div>
