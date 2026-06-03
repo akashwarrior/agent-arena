@@ -7,11 +7,9 @@ import {
   type ServerMessage,
 } from "@repo/shared";
 
-type ClientData = Readonly<{ id: string; }>;
-type Client = Readonly<Bun.ServerWebSocket<ClientData>>;
 type ServerPayload = ServerMessage["payload"];
 
-const clients: Array<Client> = [];
+const GAME_TOPIC = "game" as const;
 
 const PORT = process.env.PORT || 3001;
 const WEB_APP_URL = process.env.WEB_APP_URL ?? "http://localhost:3000";
@@ -46,7 +44,6 @@ const GAME_NAMES = [
 ] as const;
 
 const engine = new GameEngine(MAX_AGENTS);
-let clientId = 0;
 
 const gameScheduleSelect = {
   id: true,
@@ -83,26 +80,20 @@ function getPlatformFeeBps(): number {
 
 const PLATFORM_FEE_BPS = getPlatformFeeBps();
 
+const SERVER_MESSAGE: ServerMessage = {
+  $typeName: "ServerMessage",
+  payload: { case: undefined },
+} as const;
+
 function encodePayload(payload: ServerPayload): Uint8Array {
-  return toBinary(ServerMessageSchema, {
-    $typeName: "ServerMessage",
-    payload,
-  } as const);
-}
-
-function broadcast(payload: ServerPayload): void {
-  if (clients.length === 0) return;
-
-  const encoded = encodePayload(payload);
-  for (const client of clients) {
-    client.send(encoded);
-  }
-}
-
-function tickEngine(lastTickAt: number, now: number): number {
-  const deltaSeconds = Math.max(0, Math.min((now - lastTickAt) / 1000, 0.12));
-  engine.tick(deltaSeconds, now);
-  return now;
+  SERVER_MESSAGE.payload = payload;
+  return toBinary(
+    ServerMessageSchema,
+    SERVER_MESSAGE,
+    {
+      writeUnknownFields: false,
+    },
+  );
 }
 
 function createTickPayload(): ServerPayload {
@@ -111,7 +102,6 @@ function createTickPayload(): ServerPayload {
     value: {
       $typeName: "LiveMatchTick",
       gameId: engine.getId(),
-      remainingMs: engine.getRemainingMs(),
       food: engine.getFood(),
       agents: engine.getAgents(),
     },
@@ -130,16 +120,6 @@ function createMatchEndPayload(): ServerPayload | null {
       winner,
     },
   };
-}
-
-function removeClient(client: Client): void {
-  const index = clients.indexOf(client);
-  if (index === -1) return;
-
-  const last = clients.pop()!;
-  if (index < clients.length) {
-    clients[index] = last;
-  }
 }
 
 function parseGameId(value: string | null): number | null {
@@ -332,7 +312,7 @@ async function resolveMatch(): Promise<void> {
 }
 
 const INTERVAL_DURATION = 30 * 1000;
-const GAME_TICK = Math.round(1000 / 24);
+const GAME_TICK = Math.round(1000 / 30);
 
 async function startGameLoop() {
   let lastEngineTickAt = Date.now();
@@ -343,7 +323,9 @@ async function startGameLoop() {
 
     switch (engine.getStatus()) {
       case "RUNNING":
-        lastEngineTickAt = tickEngine(lastEngineTickAt, now);
+        const deltaSeconds = Math.max(0, Math.min((now - lastEngineTickAt) / 1000, 0.12));
+        engine.tick(deltaSeconds, now);
+        lastEngineTickAt = now;
         if (engine.getStatus() === "ENDED") {
           const endPayload = createMatchEndPayload();
           if (endPayload) broadcast(endPayload);
@@ -366,31 +348,27 @@ async function startGameLoop() {
         const startedAt = engine.getStartedAt();
         if (startedAt <= now) {
           try {
-            const started = await prisma.game.updateMany({
+            await prisma.game.update({
               where: { id: engine.getId(), status: "UPCOMING" },
               data: { status: "LIVE" },
             });
-            if (started.count !== 1) {
-              tick_ms = 200;
-              break;
-            }
+
+            engine.startGame();
+            tick_ms = GAME_TICK;
+            lastEngineTickAt = now;
           } catch {
             tick_ms = 200;
-            break;
           }
-          tick_ms = GAME_TICK;
-          lastEngineTickAt = now;
-          engine.startGame();
-          break;
+        } else {
+          tick_ms = Math.max(100, Math.min(1000, startedAt - now));
         }
-        tick_ms = Math.max(100, Math.min(1000, startedAt - now));
         break;
     }
 
     const diff = Date.now() - now;
-    await new Promise((r) =>
-      setTimeout(r, diff > tick_ms ? 0 : tick_ms - diff),
-    );
+    if (diff < tick_ms) {
+      await new Promise((r) => setTimeout(r, tick_ms - diff));
+    }
   }
 }
 
@@ -498,7 +476,7 @@ async function init() {
 
 const WEB_APP_ORIGIN = new URL(WEB_APP_URL).origin;
 
-const server = Bun.serve<ClientData>({
+const server = Bun.serve({
   port: PORT,
 
   fetch(request, server) {
@@ -514,11 +492,7 @@ const server = Bun.serve<ClientData>({
       return new Response("Forbidden", { status: 403 });
     }
 
-    const upgraded = server.upgrade(request, {
-      data: {
-        id: `c-${clientId++}`,
-      },
-    });
+    const upgraded = server.upgrade(request);
 
     if (upgraded) return;
 
@@ -530,26 +504,34 @@ const server = Bun.serve<ClientData>({
 
   websocket: {
     open(client) {
-      clients.push(client);
+      client.subscribe(GAME_TOPIC);
       console.log("[arena] client connected", {
-        clientId: client.data.id,
-        clients: clients.length,
+        viewers: server.subscriberCount(GAME_TOPIC),
       });
     },
 
+    backpressureLimit: 0,
+    closeOnBackpressureLimit: true,
+    maxPayloadLength: 300 * 1024,
+    perMessageDeflate: { compress: "disable", decompress: "disable" },
+    sendPings: false,
+
     message() { },
 
-    close(client) {
-      removeClient(client);
+    close() {
       console.log("[arena] client disconnected", {
-        clientId: client.data.id,
-        clients: clients.length,
+        viewers: server.subscriberCount(GAME_TOPIC),
       });
     },
   },
 });
 
 console.log("[arena] listening", { url: `ws://localhost:${server.port}` });
+
+function broadcast(payload: ServerPayload): void {
+  if (server.subscriberCount(GAME_TOPIC) === 0) return;
+  server.publish(GAME_TOPIC, encodePayload(payload));
+}
 
 init().catch((err) => {
   console.error("[arena] initialization failed", err);

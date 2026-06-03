@@ -1,5 +1,4 @@
 import { WORLD, type Agent, type Food, type Point } from "@repo/shared";
-import type { LiveGameFrame } from "@/lib/store";
 
 type RenderPoint = Pick<Point, "x" | "y">;
 
@@ -148,17 +147,17 @@ function drawEyes(ctx: CanvasRenderingContext2D, agent: Agent) {
 }
 
 export function pickCameraTarget(
-  snapshot: LiveGameFrame,
+  agents: Agent[],
   followingId: string | null
 ): RenderPoint & { followingId: string | null } {
   if (followingId) {
-    const selected = snapshot.agents.find((a) => a.id === followingId);
+    const selected = agents.find((a) => a.id === followingId);
     if (selected?.alive && selected.head) {
       return { ...selected.head, followingId: selected.id };
     }
   }
 
-  const firstLiving = snapshot.agents.find((a) => a.alive);
+  const firstLiving = agents.find((a) => a.alive);
   if (firstLiving?.head) {
     return { ...firstLiving.head, followingId: firstLiving.id };
   }
@@ -180,10 +179,15 @@ export function advanceCamera(
   camera.y = clamp(camera.y, halfH, WORLD.height - halfH);
 }
 
+type Snapshot = {
+  agents: Agent[];
+  food: Food[];
+};
+
 export function drawFrame(
   ctx: CanvasRenderingContext2D,
   viewport: Viewport,
-  snapshot: LiveGameFrame,
+  snapshot: Snapshot,
   camera: Camera
 ): void {
   ctx.setTransform(viewport.ratio, 0, 0, viewport.ratio, 0, 0);

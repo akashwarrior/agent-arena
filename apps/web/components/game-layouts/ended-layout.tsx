@@ -1,6 +1,12 @@
+"use client";
+
 import type { GameWithAgents, UserGameBet } from "@/lib/api-types";
 import Link from "next/link";
 import { ArrowUpRight, Clock } from "lucide-react";
+import { useSplToken } from "@solana/react-hooks";
+import { USDC_MINT } from "@/lib/jupiter";
+import { TOKEN_PROGRAM_ADDRESS } from "@solana/client";
+import { useEffect } from "react";
 
 function summarizeBets(userBets: UserGameBet[]) {
   const totalWagered = userBets.reduce((sum, b) => sum + b.amount, 0);
@@ -22,6 +28,14 @@ export function EndedLayout({
   game: GameWithAgents;
   userBets: UserGameBet[];
 }) {
+  const { refresh } = useSplToken(USDC_MINT, {
+    config: {
+      decimals: 6,
+      tokenProgram: TOKEN_PROGRAM_ADDRESS,
+    },
+    commitment: "processed",
+  });
+
   const winner = game.agents.find((agent) => agent.id === game.winnerAgentId);
   const { totalWagered, totalPayout, netResult } = summarizeBets(userBets);
   const hasBets = userBets.length > 0;
@@ -29,6 +43,12 @@ export function EndedLayout({
   const isPending = game.status === "ENDED" && hasBets;
   const isWin = netResult > 0;
   const isLoss = netResult < 0;
+
+  useEffect(() => {
+    if (game.status === "SETTLED") {
+      refresh();
+    }
+  }, [game.status])
 
   return (
     <div className="relative flex w-full max-w-5xl flex-col overflow-hidden rounded-xl border-2 border-border bg-card shadow-[4px_4px_0px_0px_var(--border)] min-h-[400px] md:aspect-video">
@@ -47,9 +67,8 @@ export function EndedLayout({
         <div className="flex items-center justify-between gap-2 border-b-2 border-border px-4 py-2 md:px-5 md:py-2.5">
           <div className="flex min-w-0 items-center gap-2">
             <span
-              className={`size-1.5 shrink-0 rounded-full ${
-                isPending ? "bg-warning animate-pulse" : "bg-success"
-              }`}
+              className={`size-1.5 shrink-0 rounded-full ${isPending ? "bg-warning animate-pulse" : "bg-success"
+                }`}
             />
             <span className="truncate font-mono text-[10px] font-black tracking-widest text-foreground uppercase">
               {isSettled || !hasBets
@@ -59,9 +78,8 @@ export function EndedLayout({
             </span>
           </div>
           <span
-            className={`shrink-0 font-mono text-[10px] font-bold tracking-widest uppercase ${
-              isPending ? "text-warning" : "text-muted-foreground"
-            }`}
+            className={`shrink-0 font-mono text-[10px] font-bold tracking-widest uppercase ${isPending ? "text-warning" : "text-muted-foreground"
+              }`}
           >
             {isSettled ? "Settled" : isPending ? "Pending" : game.status}
           </span>
@@ -98,13 +116,12 @@ export function EndedLayout({
                       {isWin ? "You Won" : isLoss ? "You Lost" : "Break Even"}
                     </p>
                     <p
-                      className={`mt-1 whitespace-nowrap text-center font-display text-4xl font-black tracking-tighter tabular-nums md:text-5xl ${
-                        isWin
-                          ? "text-success"
-                          : isLoss
-                            ? "text-destructive"
-                            : "text-foreground"
-                      }`}
+                      className={`mt-1 whitespace-nowrap text-center font-display text-4xl font-black tracking-tighter tabular-nums md:text-5xl ${isWin
+                        ? "text-success"
+                        : isLoss
+                          ? "text-destructive"
+                          : "text-foreground"
+                        }`}
                     >
                       {isWin ? "+" : ""}
                       {netResult.toFixed(2)}

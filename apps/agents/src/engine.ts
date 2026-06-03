@@ -90,8 +90,6 @@ export class GameEngine {
   private id: number;
   private name: string;
   private startedAt: number;
-  private remainingMs: number;
-  private expectedEnd: number;
   private agents: Array<AgentInternal>;
   private food: Array<Food>;
 
@@ -100,8 +98,6 @@ export class GameEngine {
     this.id = -1;
     this.name = "Waiting For Upcoming Match";
     this.startedAt = Date.now();
-    this.remainingMs = 0;
-    this.expectedEnd = Date.now();
     this.agents = new Array<AgentInternal>(agentCount);
     this.food = Array.from({ length: FOOD_COUNT }, () => ({
       $typeName: "Food",
@@ -113,8 +109,6 @@ export class GameEngine {
   public scheduleGame(config: GameConfig) {
     this.id = config.id;
     this.name = config.name;
-    this.expectedEnd = config.startedAt + MATCH_DURATION;
-    this.remainingMs = MATCH_DURATION;
     this.startedAt = config.startedAt;
     this.status = "INTERVAL";
 
@@ -192,32 +186,28 @@ export class GameEngine {
     return this.name;
   }
 
-  public getRemainingMs() {
-    return this.remainingMs;
-  }
-
   public getFood() {
     return this.food;
   }
 
-  public getWinner(): Agent | null {
-    return this.agents[0] ?? null;
+  public getWinner(): Agent | undefined {
+    return this.agents[0] ?? undefined;
   }
 
   private finishMatch() {
     this.status = "ENDED";
-    this.updateRanks();
+    this.agents.sort((a, b) => {
+      if (a.alive !== b.alive) return a.alive ? -1 : 1;
+      return b.score - a.score;
+    });
+
+    this.agents.forEach((agent, index) => {
+      agent.rank = index + 1;
+    });
   }
 
   public tick(deltaSeconds: number, now: number): void {
     if (this.status !== "RUNNING") return;
-
-    const remainingMs = this.expectedEnd - now;
-    this.remainingMs = remainingMs > 0 ? remainingMs : 0;
-    if (remainingMs <= 0) {
-      this.finishMatch();
-      return;
-    }
 
     for (const agent of this.agents) {
       if (!agent.alive) continue;
@@ -229,14 +219,13 @@ export class GameEngine {
 
     this.handleFoodTouches(deltaSeconds);
     this.resolveCollisions();
-    this.updateRanks();
     let aliveAgents = 0;
     for (const agent of this.agents) {
       if (agent.alive) {
         aliveAgents++;
       }
     }
-    if (aliveAgents <= 1) {
+    if (aliveAgents <= 1 || this.startedAt + MATCH_DURATION <= now) {
       this.finishMatch();
     }
   }
@@ -438,16 +427,9 @@ export class GameEngine {
         y: clamp(point.y + randomInt(-10, 10), 0, WORLD.height),
       });
     }
-  }
 
-  private updateRanks(): void {
-    this.agents.sort((a, b) => {
-      if (a.alive !== b.alive) return a.alive ? -1 : 1;
-      return b.score - a.score;
-    });
-
-    this.agents.forEach((agent, index) => {
-      agent.rank = index + 1;
-    });
+    agent.head = undefined;
+    agent.body.length = 0;
+    agent.headPath.length = 0;
   }
 }

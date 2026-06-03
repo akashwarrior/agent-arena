@@ -3,21 +3,21 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { Loader2, WifiOff, Wifi, Trophy } from "lucide-react";
 import {
-  gameSnapshotAtom,
+  agentsSnapshotAtom,
   spectatingAgentAtom,
   connectionStatusAtom,
   matchWinnerAtom,
 } from "@/lib/store";
 
 export function GameOverlay() {
-  const snapshot = useAtomValue(gameSnapshotAtom);
+  const agents = useAtomValue(agentsSnapshotAtom);
   const spectatingAgent = useAtomValue(spectatingAgentAtom);
   const setSpectatingAgent = useSetAtom(spectatingAgentAtom);
   const connectionStatus = useAtomValue(connectionStatusAtom);
   const matchWinner = useAtomValue(matchWinnerAtom);
 
-  const aliveAgents = snapshot?.agents.filter((a) => a.alive);
-  const currentAgent = snapshot?.agents.find((a) => a.id === spectatingAgent);
+  const aliveAgents = agents.filter((a) => a.alive);
+  const currentAgent = agents.find((a) => a.id === spectatingAgent);
 
   if (connectionStatus === "connecting") {
     return (
@@ -98,7 +98,7 @@ export function GameOverlay() {
           <span className="text-label px-1.5 pb-1 text-muted-foreground">
             ROSTER
           </span>
-          {aliveAgents?.map((agent) => (
+          {aliveAgents.map((agent) => (
             <button
               key={agent.id}
               type="button"

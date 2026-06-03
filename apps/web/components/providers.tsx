@@ -14,6 +14,7 @@ export function Providers({ children, solanaCluster }: ProvidersProps) {
   const client = createClient({
     cluster: solanaCluster,
     walletConnectors: autoDiscover(),
+    commitment: "processed",
   });
 
   return (

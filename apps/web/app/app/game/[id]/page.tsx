@@ -5,8 +5,9 @@ import { SWRConfig } from "swr";
 import { ArrowLeft, Tv } from "lucide-react";
 import { GameStage } from "@/components/game-stage";
 import { GameSidebar } from "@/components/game-sidebar";
-import { z } from "zod";
 import { gameDetailSelect, normalizeGameDetail } from "@/lib/api-types";
+import { z } from "zod";
+import { Provider } from "jotai";
 
 const gameIdSchema = z
   .string()
@@ -43,58 +44,60 @@ export default async function GamePage({
 
   return (
     <SWRConfig value={{ fallback }}>
-      <main className="flex flex-col overflow-x-hidden bg-background md:flex-row">
-        <div className="flex flex-1 flex-col">
-          <div className="flex items-center justify-between border-b-2 border-border bg-card px-4 py-3 lg:px-6">
-            <div className="flex items-center gap-3">
-              <Link
-                href="/app"
-                className="flex items-center gap-1.5 rounded-lg border-2 border-border bg-secondary px-3 py-1.5 font-mono text-[10px] font-bold tracking-widest text-muted-foreground uppercase transition-all hover:bg-muted hover:text-foreground"
-              >
-                <ArrowLeft className="size-3" />
-                Markets
-              </Link>
-              <span className="hidden text-muted-foreground/40 sm:inline">
-                /
-              </span>
-              <div className="hidden items-center gap-2 sm:flex">
-                <Tv className="size-3.5 text-primary" />
-                <span className="font-display text-sm font-black tracking-tight text-foreground">
-                  {game.name}
+      <Provider>
+        <main className="flex flex-col overflow-x-hidden bg-background md:flex-row">
+          <div className="flex flex-1 flex-col">
+            <div className="flex items-center justify-between border-b-2 border-border bg-card px-4 py-3 lg:px-6">
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/app"
+                  className="flex items-center gap-1.5 rounded-lg border-2 border-border bg-secondary px-3 py-1.5 font-mono text-[10px] font-bold tracking-widest text-muted-foreground uppercase transition-all hover:bg-muted hover:text-foreground"
+                >
+                  <ArrowLeft className="size-3" />
+                  Markets
+                </Link>
+                <span className="hidden text-muted-foreground/40 sm:inline">
+                  /
                 </span>
-                <span className="rounded-md border-2 border-border bg-secondary px-1.5 py-0.5 font-mono text-[10px] font-bold text-muted-foreground">
-                  R{game.id}
+                <div className="hidden items-center gap-2 sm:flex">
+                  <Tv className="size-3.5 text-primary" />
+                  <span className="font-display text-sm font-black tracking-tight text-foreground">
+                    {game.name}
+                  </span>
+                  <span className="rounded-md border-2 border-border bg-secondary px-1.5 py-0.5 font-mono text-[10px] font-bold text-muted-foreground">
+                    R{game.id}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 bg-card px-4 py-2">
+                <span className="text-label text-muted-foreground">
+                  ROUND{" "}
+                  <span className="text-foreground">#{game.id || "---"}</span>
+                </span>
+                <span className="text-label text-muted-foreground">
+                  STATUS{" "}
+                  <span
+                    className={
+                      game.status === "LIVE"
+                        ? "text-success"
+                        : "text-muted-foreground"
+                    }
+                  >
+                    {game.status}
+                  </span>
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-4 bg-card px-4 py-2">
-              <span className="text-label text-muted-foreground">
-                ROUND{" "}
-                <span className="text-foreground">#{game.id || "---"}</span>
-              </span>
-              <span className="text-label text-muted-foreground">
-                STATUS{" "}
-                <span
-                  className={
-                    game.status === "LIVE"
-                      ? "text-success"
-                      : "text-muted-foreground"
-                  }
-                >
-                  {game.status}
-                </span>
-              </span>
-            </div>
+            <GameStage initialGame={game} />
           </div>
 
-          <GameStage initialGame={game} />
-        </div>
-
-        <div className="w-full border-t-2 border-border bg-card md:w-100 md:border-t-0 md:border-l-2">
-          <GameSidebar gameId={game.id} />
-        </div>
-      </main>
+          <div className="w-full border-t-2 border-border bg-card md:w-100 md:border-t-0 md:border-l-2">
+            <GameSidebar gameId={game.id} />
+          </div>
+        </main>
+      </Provider>
     </SWRConfig>
   );
 }

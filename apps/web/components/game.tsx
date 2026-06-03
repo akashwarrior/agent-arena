@@ -11,8 +11,8 @@ import {
 import {
   spectatingAgentAtom,
   connectionStatusAtom,
-  gameServerEventAtom,
-  type LiveGameFrame,
+  agentsSnapshotAtom,
+  matchWinnerAtom,
 } from "@/lib/store";
 
 const MAX_DEVICE_PIXEL_RATIO = 1.5;
@@ -28,7 +28,8 @@ export function Game({ gameId }: { gameId: number }) {
 
   const setSpectatingAgent = useSetAtom(spectatingAgentAtom);
   const setConnectionStatus = useSetAtom(connectionStatusAtom);
-  const publishServerEvent = useSetAtom(gameServerEventAtom);
+  const setAgentsSnapshot = useSetAtom(agentsSnapshotAtom);
+  const setMatchWinner = useSetAtom(matchWinnerAtom);
 
   useEffect(() => {
     spectatorRef.current = spectatingAgent;
@@ -58,16 +59,6 @@ export function Game({ gameId }: { gameId: number }) {
       if (canvas.height !== targetH) canvas.height = targetH;
     };
 
-    const renderGame = (snapshot: LiveGameFrame) => {
-      const camera = pickCameraTarget(snapshot, spectatorRef.current);
-      if (camera.followingId !== spectatorRef.current) {
-        spectatorRef.current = camera.followingId;
-        setSpectatingAgent(camera.followingId);
-      }
-      advanceCamera(camera, viewport);
-      drawFrame(ctx, viewport, snapshot, camera);
-    };
-
     const socketUrl = new URL(WS_URL);
     socketUrl.searchParams.set("gameId", String(gameId));
 
@@ -95,19 +86,25 @@ export function Game({ gameId }: { gameId: number }) {
             if (animationFrame) {
               cancelAnimationFrame(animationFrame);
             }
-            animationFrame = requestAnimationFrame(() => renderGame(payload.value));
+            animationFrame = requestAnimationFrame(() => {
+              const camera = pickCameraTarget(payload.value.agents, spectatorRef.current);
+              if (camera.followingId !== spectatorRef.current) {
+                spectatorRef.current = camera.followingId;
+                setSpectatingAgent(camera.followingId);
+              }
+              advanceCamera(camera, viewport);
+              drawFrame(ctx, viewport, payload.value, camera);
+            });
+            setAgentsSnapshot(payload.value.agents);
             break;
 
           case "matchEnd":
             ctx.reset();
             audioRef.current?.pause();
-            break;
-
-          case undefined:
+            setMatchWinner(payload.value.winner || null);
+            setAgentsSnapshot([]);
             break;
         }
-
-        publishServerEvent(payload);
       } catch {
         // Ignore malformed messages
       }

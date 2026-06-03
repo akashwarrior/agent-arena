@@ -72,33 +72,33 @@ async function main() {
 
   console.log("Starting seed...");
 
-  // await prisma.payment.updateMany({
-  //   data: {
-  //     betId: null,
-  //     gameParticipantId: null,
-  //     settlementEntryId: null,
-  //     userId: null,
-  //   },
-  // });
-  // await prisma.settlementEntry.updateMany({
-  //   data: {
-  //     betId: null,
-  //     gameParticipantId: null,
-  //     userId: null,
-  //   },
-  // });
-  // await prisma.game.updateMany({
-  //   data: { winnerParticipantId: null },
-  // });
-  // await prisma.bet.deleteMany();
-  // await prisma.payment.deleteMany();
-  // await prisma.settlementEntry.deleteMany();
-  // await prisma.gameSettlement.deleteMany();
-  // await prisma.gameParticipant.deleteMany();
-  // await prisma.game.deleteMany();
-  // await prisma.escrowAccount.deleteMany();
-  // await prisma.agent.deleteMany();
-  // await prisma.user.deleteMany();
+  await prisma.payment.updateMany({
+    data: {
+      betId: null,
+      gameParticipantId: null,
+      settlementEntryId: null,
+      userId: null,
+    },
+  });
+  await prisma.settlementEntry.updateMany({
+    data: {
+      betId: null,
+      gameParticipantId: null,
+      userId: null,
+    },
+  });
+  await prisma.game.updateMany({
+    data: { winnerParticipantId: null },
+  });
+  await prisma.bet.deleteMany();
+  await prisma.payment.deleteMany();
+  await prisma.settlementEntry.deleteMany();
+  await prisma.gameSettlement.deleteMany();
+  await prisma.gameParticipant.deleteMany();
+  await prisma.game.deleteMany();
+  await prisma.escrowAccount.deleteMany();
+  await prisma.agent.deleteMany();
+  await prisma.user.deleteMany();
 
   const escrowAccount = await prisma.escrowAccount.create({
     data: {

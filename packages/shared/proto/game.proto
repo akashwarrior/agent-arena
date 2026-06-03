@@ -27,9 +27,8 @@ message Agent {
 
 message LiveMatchTick {
   uint32 game_id = 1;
-  uint32 remaining_ms = 2;
-  repeated Food food = 3;
-  repeated Agent agents = 4;
+  repeated Food food = 2;
+  repeated Agent agents = 3;
 }
 
 message MatchEnd {

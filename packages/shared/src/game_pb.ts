@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file game.proto.
  */
 export const file_game: GenFile = /*@__PURE__*/
-  fileDesc("CgpnYW1lLnByb3RvIh0KBVBvaW50EgkKAXgYASABKAISCQoBeRgCIAEoAiIcCgRGb29kEgkKAXgYASABKAISCQoBeRgCIAEoAiLTAQoFQWdlbnQSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRINCgVjb2xvchgDIAEoCRIOCgZhY2NlbnQYBCABKAkSDQoFYWxpdmUYBSABKAgSDQoFc2NvcmUYBiABKA0SDAoEc2l6ZRgHIAEoAhINCgVhbmdsZRgIIAEoAhIUCgRoZWFkGAkgASgLMgYuUG9pbnQSFAoEYm9keRgKIAMoCzIGLlBvaW50Eg4KBmxlbmd0aBgLIAEoDRIRCgRyYW5rGAwgASgNSACIAQFCBwoFX3JhbmsiYwoNTGl2ZU1hdGNoVGljaxIPCgdnYW1lX2lkGAEgASgNEhQKDHJlbWFpbmluZ19tcxgCIAEoDRITCgRmb29kGAMgAygLMgUuRm9vZBIWCgZhZ2VudHMYBCADKAsyBi5BZ2VudCIzCghNYXRjaEVuZBIPCgdnYW1lX2lkGAEgASgNEhYKBndpbm5lchgCIAEoCzIGLkFnZW50IloKDVNlcnZlck1lc3NhZ2USHgoEdGljaxgBIAEoCzIOLkxpdmVNYXRjaFRpY2tIABIeCgltYXRjaF9lbmQYAiABKAsyCS5NYXRjaEVuZEgAQgkKB3BheWxvYWRiBnByb3RvMw");
+  fileDesc("CgpnYW1lLnByb3RvIh0KBVBvaW50EgkKAXgYASABKAISCQoBeRgCIAEoAiIcCgRGb29kEgkKAXgYASABKAISCQoBeRgCIAEoAiLTAQoFQWdlbnQSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRINCgVjb2xvchgDIAEoCRIOCgZhY2NlbnQYBCABKAkSDQoFYWxpdmUYBSABKAgSDQoFc2NvcmUYBiABKA0SDAoEc2l6ZRgHIAEoAhINCgVhbmdsZRgIIAEoAhIUCgRoZWFkGAkgASgLMgYuUG9pbnQSFAoEYm9keRgKIAMoCzIGLlBvaW50Eg4KBmxlbmd0aBgLIAEoDRIRCgRyYW5rGAwgASgNSACIAQFCBwoFX3JhbmsiTQoNTGl2ZU1hdGNoVGljaxIPCgdnYW1lX2lkGAEgASgNEhMKBGZvb2QYAiADKAsyBS5Gb29kEhYKBmFnZW50cxgDIAMoCzIGLkFnZW50IjMKCE1hdGNoRW5kEg8KB2dhbWVfaWQYASABKA0SFgoGd2lubmVyGAIgASgLMgYuQWdlbnQiWgoNU2VydmVyTWVzc2FnZRIeCgR0aWNrGAEgASgLMg4uTGl2ZU1hdGNoVGlja0gAEh4KCW1hdGNoX2VuZBgCIAEoCzIJLk1hdGNoRW5kSABCCQoHcGF5bG9hZGIGcHJvdG8z");
 
 /**
  * @generated from message Point
@@ -138,17 +138,12 @@ export type LiveMatchTick = Message<"LiveMatchTick"> & {
   gameId: number;
 
   /**
-   * @generated from field: uint32 remaining_ms = 2;
-   */
-  remainingMs: number;
-
-  /**
-   * @generated from field: repeated Food food = 3;
+   * @generated from field: repeated Food food = 2;
    */
   food: Food[];
 
   /**
-   * @generated from field: repeated Agent agents = 4;
+   * @generated from field: repeated Agent agents = 3;
    */
   agents: Agent[];
 };

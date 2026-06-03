@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { gameSnapshotAtom, matchWinnerAtom } from "@/lib/store";
+import { agentsSnapshotAtom, matchWinnerAtom } from "@/lib/store";
 
 import { USDC_MINT } from "@/lib/jupiter";
 import { TOKEN_PROGRAM_ADDRESS } from "@solana/client";
@@ -44,16 +44,18 @@ export function GameSidebar({ gameId }: GameSidebarProps) {
   const { connected, wallet } = useWalletConnection();
   const session = useWalletSession();
 
-  const walletAddress = wallet?.account.address.toString() ?? null;
-  const usdcToken = useSplToken(USDC_MINT, {
-    commitment: "processed",
+  const walletAddress = wallet?.account.address.toString();
+  const { send, balance, refresh } = useSplToken(USDC_MINT, {
     config: {
       decimals: 6,
       tokenProgram: TOKEN_PROGRAM_ADDRESS,
     },
+    owner: walletAddress,
+    commitment: "processed",
+    revalidateOnFocus: true,
   });
 
-  const snapshot = useAtomValue(gameSnapshotAtom);
+  const agents = useAtomValue(agentsSnapshotAtom);
   const matchWinner = useAtomValue(matchWinnerAtom);
 
   const isLiveGame = game.status === "LIVE";
@@ -62,8 +64,8 @@ export function GameSidebar({ gameId }: GameSidebarProps) {
   const agentAliveMap = new Map<string, boolean>();
   const agentScoreMap = new Map<string, number>();
 
-  if (snapshot) {
-    for (const agent of snapshot.agents) {
+  if (agents.length) {
+    for (const agent of agents) {
       agentAliveMap.set(agent.id, agent.alive);
       agentScoreMap.set(agent.id, agent.score);
     }
@@ -91,6 +93,11 @@ export function GameSidebar({ gameId }: GameSidebarProps) {
       return;
     }
 
+    if (!balance || balance.amount < Number(betAmount) * 1e6) {
+      toast.error("Insufficient USDC balance");
+      return;
+    }
+
     setSubmitting(true);
     try {
       console.log("Requesting bet swap...", performance.now() - now);
@@ -101,7 +108,7 @@ export function GameSidebar({ gameId }: GameSidebarProps) {
         walletAddress
       );
 
-      const txHash = await usdcToken.send(
+      const txHash = await send(
         {
           amount: betAmount,
           amountInBaseUnits: false,
@@ -126,6 +133,7 @@ export function GameSidebar({ gameId }: GameSidebarProps) {
       setSelectedAgent(null);
       setBetAmount("");
       await mutate();
+      await refresh();
     } catch (err) {
       console.log("Bet placement error:", err);
       toast.error(err instanceof Error ? err.message : "Bet failed");
