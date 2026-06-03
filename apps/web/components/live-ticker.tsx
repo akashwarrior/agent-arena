@@ -2,27 +2,7 @@
 
 import useSWR from "swr";
 import { Loader2, WifiOff, Zap } from "lucide-react";
-
-type LiveBetActivity = {
-  id: string;
-  amount: number;
-  placedAt: string;
-  agent: {
-    id: string;
-    name: string;
-    color: string;
-    accent: string;
-  };
-  game: {
-    id: number;
-    name: string;
-    status: string;
-  };
-};
-
-type LiveBetActivityResponse = {
-  activities: LiveBetActivity[];
-};
+import type { LiveBetActivity, LiveBetActivityResponse } from "@/lib/api-types";
 
 async function fetcher(url: string): Promise<LiveBetActivityResponse> {
   const response = await fetch(url);
@@ -43,10 +23,10 @@ function formatUsdc(amount: number): string {
 
 export function LiveTicker({ bets }: { bets: LiveBetActivity[] }) {
   const { data, error, isLoading } = useSWR<LiveBetActivityResponse>(
-    "/api/activity/bets",
+    "/api/bet-activities",
     fetcher,
     {
-      refreshInterval: 10_000,
+      refreshInterval: 15_000,
       revalidateOnFocus: false,
       revalidateOnMount: false,
       keepPreviousData: true,
@@ -75,10 +55,10 @@ export function LiveTicker({ bets }: { bets: LiveBetActivity[] }) {
               </span>
               <span>on</span>
               <span className="rounded border-2 border-border bg-card px-1 py-px font-black text-foreground">
-                {activity.agent.name}
+                {activity.agentName}
               </span>
               <span className="ml-0.5 text-muted-foreground/60">
-                in R{activity.game.id}
+                in R{activity.gameId}
               </span>
             </span>
           ))}

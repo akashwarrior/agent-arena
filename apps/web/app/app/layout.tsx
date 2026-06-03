@@ -7,6 +7,10 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { prisma } from "@repo/db";
+import {
+  liveBetActivitySelect,
+  normalizeLiveBetActivity,
+} from "@/lib/api-types";
 
 export default async function AppLayout({
   children,
@@ -25,27 +29,8 @@ export default async function AppLayout({
     orderBy: {
       placedAt: "desc",
     },
-    take: 20,
-    select: {
-      id: true,
-      amount: true,
-      placedAt: true,
-      agent: {
-        select: {
-          id: true,
-          name: true,
-          color: true,
-          accent: true,
-        },
-      },
-      game: {
-        select: {
-          id: true,
-          name: true,
-          status: true,
-        },
-      },
-    },
+    take: 12,
+    select: liveBetActivitySelect,
   });
 
   return (
@@ -71,9 +56,8 @@ export default async function AppLayout({
             <div className="hidden h-5 w-0.5 bg-border md:block" />
 
             <div className="hidden items-center gap-1.5 md:flex">
-              <span className="live-dot" />
               <span className="font-mono text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
-                LIVE MARKETS
+                Devnet
               </span>
             </div>
           </div>
@@ -84,13 +68,7 @@ export default async function AppLayout({
           </div>
         </nav>
 
-        <LiveTicker
-          bets={bets.map((bet) => ({
-            ...bet,
-            amount: Number(bet.amount) / 1e6,
-            placedAt: bet.placedAt.toISOString()
-          }))}
-        />
+        <LiveTicker bets={bets.map(normalizeLiveBetActivity)} />
 
         <div className="relative flex flex-1 flex-col overflow-hidden">
           {children}

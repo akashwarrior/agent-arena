@@ -18,68 +18,163 @@ model Agent {
   color  String
   accent String
 
-  totalGames Int    @default(0)
-  wins       Int    @default(0)
-  losses     Int    @default(0)
-  draws      Int    @default(0)
-  winRate    Float?
-
-  agentGames AgentGame[]
-  bets       Bet[]
-  wonGames   Game[]      @relation("GameWinner")
+  participants GameParticipant[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@index([winRate])
-  @@index([wins])
 }
 
 enum GameStatus {
+  DRAFT
   UPCOMING
-  LIVE // match running
-  ENDED // settled
-  CANCELLED // all bets refunded
+  LIVE
+  ENDED
+  CANCELLED
+  SETTLED
+}
+
+enum GameParticipantStatus {
+  ACTIVE
+  ELIMINATED
+  WINNER
+  LOSER
+}
+
+enum BetStatus {
+  ACTIVE
+  WON
+  LOST
+  REFUNDED
+}
+
+enum SolanaNetwork {
+  DEVNET
+  MAINNET
+}
+
+enum EscrowAccountStatus {
+  ACTIVE
+  DISABLED
+  RETIRED
+}
+
+enum PaymentType {
+  BET_DEPOSIT
+  PAYOUT
+  REFUND
+  PLATFORM_FEE
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  CONFIRMED
+  FAILED
+  EXPIRED
+  CANCELLED
+}
+
+enum SettlementStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum SettlementEntryType {
+  PAYOUT
+  REFUND
+  LOSS
+  PLATFORM_FEE
+}
+
+enum SettlementEntryStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }
 
 model Game {
-  id     Int     @id @default(autoincrement())
+  id     Int        @id @default(autoincrement())
   name   String
   status GameStatus @default(UPCOMING)
 
-  startedAt DateTime?
-  endedAt   DateTime?
+  escrowAccountId String
+  escrowAccount   EscrowAccount @relation(fields: [escrowAccountId], references: [id])
 
-  totalPool     BigInt  @default(0)
-  feeAmount     BigInt?
-  winnerAgentId String?
-  winner        Agent?  @relation("GameWinner", fields: [winnerAgentId], references: [id])
+  feeBps Int @default(0)
 
-  agents AgentGame[]
-  bets   Bet[]
+  startedAt   DateTime?
+  endedAt     DateTime?
+  settledAt   DateTime?
+  cancelledAt DateTime?
+
+  totalPool BigInt  @default(0)
+  feeAmount BigInt?
+
+  winnerParticipantId String?
+  winnerParticipant   GameParticipant? @relation("GameWinner", fields: [winnerParticipantId, id], references: [id, gameId])
+
+  participants GameParticipant[] @relation("GameParticipants")
+  payments     Payment[]
+  settlement   GameSettlement?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([status])
+  @@unique([winnerParticipantId, id])
 }
 
-model AgentGame {
+model GameParticipant {
+  id String @id @default(uuid())
+
+  gameId Int
+  game   Game @relation("GameParticipants", fields: [gameId], references: [id], onDelete: Cascade)
+
   agentId String
   agent   Agent  @relation(fields: [agentId], references: [id])
 
-  gameId Int
-  game   Game   @relation(fields: [gameId], references: [id])
+  status GameParticipantStatus @default(ACTIVE)
 
-  @@id([agentId, gameId])
-  @@index([gameId])
+  position     Int?
+  finalRank    Int?
+  finalScore   Float?
+  eliminatedAt DateTime?
+
+  wonGame           Game?             @relation("GameWinner")
+  bets              Bet[]
+  payments          Payment[]
+  wonSettlements    GameSettlement[]  @relation("SettlementWinner")
+  settlementEntries SettlementEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([gameId, agentId])
+  @@unique([id, gameId])
 }
 
-enum BetStatus {
-  PENDING
-  WON
-  LOST
-  REFUNDED
+model EscrowAccount {
+  id String @id @default(uuid())
+
+  network SolanaNetwork
+
+  publicKey         String
+  tokenAccount      String
+  usdcMintAddress   String
+  usdcDecimals      Int    @default(6)
+  status            EscrowAccountStatus @default(ACTIVE)
+
+  games    Game[]
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([network, publicKey])
+  @@unique([network, tokenAccount])
+  @@unique([network, usdcMintAddress, publicKey])
 }
 
 model Bet {
@@ -87,24 +182,135 @@ model Bet {
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
-  agentId String
-  agent   Agent  @relation(fields: [agentId], references: [id])
-  gameId  Int
-  game    Game   @relation(fields: [gameId], references: [id])
+  gameId            Int
+  gameParticipantId String
+  gameParticipant   GameParticipant @relation(fields: [gameParticipantId, gameId], references: [id, gameId])
 
-  walletAddress String
-  amount        BigInt
-  payout        BigInt?
+  depositPaymentId String
+  depositPayment   Payment @relation("BetDepositPayment", fields: [depositPaymentId, gameId], references: [id, gameId])
 
-  status    BetStatus @default(PENDING)
+  amount       BigInt
+  payoutAmount BigInt?
+  status       BetStatus @default(ACTIVE)
+
   placedAt  DateTime  @default(now())
   settledAt DateTime?
 
-  txHash       String  @unique
-  payoutTxHash String? @unique
+  payments          Payment[]         @relation("BetPayments")
+  settlementEntries SettlementEntry[]
 
-  @@index([userId])
-  @@index([gameId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, gameParticipantId])
+  @@unique([depositPaymentId, gameId])
+  @@unique([id, gameId])
+}
+
+model Payment {
+  id String @id @default(uuid())
+
+  type   PaymentType
+  status PaymentStatus @default(PENDING)
+
+  amount          BigInt
+  confirmedAmount BigInt?
+
+  fromAddress      String
+  toAddress        String
+  fromTokenAccount String?
+  toTokenAccount   String?
+
+  txHash        String?   @unique
+  expiresAt     DateTime?
+  confirmedAt   DateTime?
+  failureReason String?
+  verification  Json?
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  escrowAccountId String
+  escrowAccount   EscrowAccount @relation(fields: [escrowAccountId], references: [id])
+
+  gameId Int
+  game   Game @relation(fields: [gameId], references: [id])
+
+  gameParticipantId String?
+  gameParticipant   GameParticipant? @relation(fields: [gameParticipantId, gameId], references: [id, gameId])
+
+  betId String?
+  bet   Bet?    @relation("BetPayments", fields: [betId, gameId], references: [id, gameId])
+
+  depositBet Bet? @relation("BetDepositPayment")
+
+  settlementEntryId String?
+  settlementEntry   SettlementEntry? @relation(fields: [settlementEntryId, gameId], references: [id, gameId])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([id, gameId])
+}
+
+model GameSettlement {
+  id String @id @default(uuid())
+
+  gameId Int  @unique
+  game   Game @relation(fields: [gameId], references: [id])
+
+  winningParticipantId String?
+  winningParticipant   GameParticipant? @relation("SettlementWinner", fields: [winningParticipantId, gameId], references: [id, gameId])
+
+  status SettlementStatus @default(PENDING)
+
+  totalPool  BigInt
+  feeAmount  BigInt
+  payoutPool BigInt
+  feeBps     Int
+
+  error       String?
+  completedAt DateTime?
+
+  entries SettlementEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([id, gameId])
+}
+
+model SettlementEntry {
+  id String @id @default(uuid())
+
+  gameId Int
+
+  settlementId String
+  settlement   GameSettlement @relation(fields: [settlementId, gameId], references: [id, gameId], onDelete: Cascade)
+
+  betId String?
+  bet   Bet?    @relation(fields: [betId, gameId], references: [id, gameId])
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  gameParticipantId String?
+  gameParticipant   GameParticipant? @relation(fields: [gameParticipantId, gameId], references: [id, gameId])
+
+  type   SettlementEntryType
+  status SettlementEntryStatus @default(PENDING)
+
+  amount        BigInt
+  walletAddress String?
+  failureReason String?
+  completedAt   DateTime?
+
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([id, gameId])
 }
 
 model User {
@@ -118,16 +324,9 @@ model User {
   sessions      Session[]
   accounts      Account[]
 
-  walletAddress String?
-
-  totalBetsPlaced Int    @default(0)
-  totalBetsWon    Int    @default(0)
-  totalBetsLost   Int    @default(0)
-  totalWagered    BigInt @default(0)
-  totalPayout     BigInt @default(0)
-  netEarnings     BigInt @default(0)
-
-  bets Bet[]
+  bets              Bet[]
+  payments          Payment[]
+  settlementEntries SettlementEntry[]
 
   @@unique([email])
   @@map("user")

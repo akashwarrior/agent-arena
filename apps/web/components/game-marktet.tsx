@@ -1,16 +1,17 @@
 "use client";
 
+import type { GameStatus } from "@repo/db";
 import { useGames } from "@/lib/swr";
 import { GameCard } from "@/components/game-card";
 import { Loader2, Zap, Trophy } from "lucide-react";
 
 export function GameMarket({
-  statusFilter,
+  statusFilters,
 }: {
-  statusFilter: "active" | "ended";
+  statusFilters: GameStatus[];
 }) {
   const { games, hasMore, isLoading, isLoadingMore, error, loadMore } =
-    useGames(statusFilter);
+    useGames(statusFilters);
 
   return isLoading && !games.length ? (
     <div className="flex flex-col items-center justify-center gap-4 py-32">
@@ -42,8 +43,8 @@ export function GameMarket({
   ) : (
     <>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {games.map((game, i) => (
-          <GameCard key={i} game={game} />
+        {games.map((game) => (
+          <GameCard key={game.id} game={game} />
         ))}
       </div>
 

@@ -1,5 +1,7 @@
 import { Space_Grotesk, Space_Mono, Doto } from "next/font/google";
 import type { Metadata } from "next";
+import type { ClusterMoniker } from "@solana/client";
+import { prisma } from "@repo/db";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
@@ -63,11 +65,23 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+async function getSolanaCluster(): Promise<ClusterMoniker> {
+  const escrowAccount = await prisma.escrowAccount.findFirst({
+    where: { status: "ACTIVE" },
+    orderBy: { createdAt: "asc" },
+    select: { network: true },
+  });
+
+  return escrowAccount?.network === "MAINNET" ? "mainnet-beta" : "devnet";
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const solanaCluster = await getSolanaCluster();
+
   return (
     <html
       lang="en"
@@ -81,7 +95,7 @@ export default function RootLayout({
       )}
     >
       <body>
-        <Providers>
+        <Providers solanaCluster={solanaCluster}>
           {children}
 
           <Toaster />

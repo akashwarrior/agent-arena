@@ -1,44 +1,59 @@
-import type { GamesResponse } from "@/lib/swr-types";
 import { SWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
-import { prisma } from "@repo/db";
+import { GameStatus, prisma } from "@repo/db";
 import { Cover } from "@/components/ui/cover";
 import { GameMarket } from "@/components/game-marktet";
 import { Zap, Trophy, Clock, Flame } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  gameListSelect,
+  normalizeGameListItem,
+  type GamesResponse,
+} from "@/lib/api-types";
 
-async function getInitialGames() {
+const PAGE_SIZE = 15;
+const ACTIVE_GAME_STATUSES: GameStatus[] = [
+  GameStatus.LIVE,
+  GameStatus.UPCOMING,
+];
+const ENDED_GAME_STATUSES: GameStatus[] = [
+  GameStatus.ENDED,
+  GameStatus.CANCELLED,
+  GameStatus.SETTLED,
+];
+
+function buildGamesKey(statuses: GameStatus[]) {
+  const params = new URLSearchParams();
+  params.set("limit", String(PAGE_SIZE));
+  for (const status of statuses) {
+    params.append("status", status);
+  }
+  return `/api/games?${params.toString()}`;
+}
+
+async function getInitialGames(statuses: readonly GameStatus[]) {
   try {
     const games = await prisma.game.findMany({
       where: {
         status: {
-          in: ["LIVE", "UPCOMING"],
+          in: [...statuses],
         },
       },
-      take: 16,
-      include: {
-        agents: {
-          include: {
-            agent: true,
-          },
-        },
-        winner: true,
+      orderBy: {
+        id: "asc",
       },
+      take: PAGE_SIZE + 1,
+      select: gameListSelect,
     });
 
     let nextCursor: number | null = null;
-    if (games.length > 15) {
+    if (games.length > PAGE_SIZE) {
       const nextItem = games.pop();
-      nextCursor = nextItem!.id;
+      nextCursor = nextItem?.id ?? null;
     }
 
     const normalizedGames: GamesResponse = {
-      games: games.map((game) => ({
-        ...game,
-        agents: game.agents.map((ag) => ag.agent),
-        totalPool: Number(game.totalPool) / 1e6,
-        feeAmount: game.feeAmount ? Number(game.feeAmount) / 1e6 : null,
-      })),
+      games: games.map(normalizeGameListItem),
       nextCursor,
     };
 
@@ -49,31 +64,31 @@ async function getInitialGames() {
 }
 
 const filters = [
-  { id: "active", label: "ALL", icon: Zap },
-  { id: "ended", label: "ENDED", icon: Trophy },
+  { id: "active", label: "ALL", icon: Zap, statuses: ACTIVE_GAME_STATUSES },
+  { id: "ended", label: "ENDED", icon: Trophy, statuses: ENDED_GAME_STATUSES },
 ] as const;
 
 export default async function App() {
   const [liveCount, endedCount, totalPoolAgg, initialGames] = await Promise.all(
     [
       prisma.game.count({
-        where: { status: "LIVE" },
+        where: { status: GameStatus.LIVE },
       }),
       prisma.game.count({
-        where: { status: "ENDED" },
+        where: { status: { in: ENDED_GAME_STATUSES } },
       }),
       prisma.game.aggregate({
-        where: { status: "LIVE" },
+        where: { status: GameStatus.LIVE },
         _sum: {
           totalPool: true,
         },
       }),
-      getInitialGames(),
+      getInitialGames(ACTIVE_GAME_STATUSES),
     ]
   );
 
   const fallback = {
-    [unstable_serialize(() => "/api/games?limit=15&status=active")]:
+    [unstable_serialize(() => buildGamesKey(ACTIVE_GAME_STATUSES))]:
       initialGames,
   } as const;
 
@@ -156,11 +171,11 @@ export default async function App() {
             </TabsList>
 
             <TabsContent value="active">
-              <GameMarket statusFilter="active" />
+              <GameMarket statusFilters={ACTIVE_GAME_STATUSES} />
             </TabsContent>
 
             <TabsContent value="ended">
-              <GameMarket statusFilter="ended" />
+              <GameMarket statusFilters={ENDED_GAME_STATUSES} />
             </TabsContent>
           </Tabs>
         </div>

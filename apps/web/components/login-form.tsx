@@ -63,7 +63,7 @@ export function LoginForm() {
             toast.error(ctx.error.message);
             setLoading(false);
           },
-          onSuccess({ response, data }) {
+          onSuccess({ response }) {
             toast.info(response.statusText);
           },
         },

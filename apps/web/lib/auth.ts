@@ -8,16 +8,6 @@ export const auth = betterAuth({
     provider: "postgresql", // or "mysql", "postgresql", ...etc
   }),
 
-  user: {
-    additionalFields: {
-      walletAddress: {
-        type: "string",
-        required: false,
-        input: true, // unsure here if user should not be allowed to change wallet_address
-      },
-    },
-  },
-
   emailAndPassword: {
     enabled: true,
     autoSignIn: true,

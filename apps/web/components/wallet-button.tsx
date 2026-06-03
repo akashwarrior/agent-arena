@@ -1,33 +1,51 @@
 "use client";
 
-import { useWallet } from "@solana/wallet-adapter-react";
-import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { Loader2, Wallet, ChevronDown, Copy, LogOut, User } from "lucide-react";
+import Image from "next/image";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
+import { authClient } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
+import { useSplToken, useWalletConnection } from "@solana/react-hooks";
+import { USDC_MINT } from "@/lib/jupiter";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
-import Image from "next/image";
-import { authClient } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
+} from "@/components/ui/dropdown-menu";
+
+import { Loader2, Wallet, ChevronDown, Copy, LogOut, User } from "lucide-react";
+
+function truncate(address: string) {
+  return `${address.slice(0, 4)}…${address.slice(-4)}`;
+}
 
 export function WalletButton() {
-  const { publicKey, connecting, connected, wallet, disconnect } = useWallet();
-  const { setVisible } = useWalletModal();
   const router = useRouter();
+  const {
+    connectors, // Available wallet connectors
+    connect, // Connect to a wallet
+    disconnect, // Disconnect current wallet
+    wallet, // Current wallet session
+    status, // 'disconnected' | 'connecting' | 'connected'
+    currentConnector, // Current connected wallet info
+  } = useWalletConnection();
 
-  const short =
-    publicKey?.toBase58().slice(0, 4) + "..." + publicKey?.toBase58().slice(-4);
+  const usdcToken = useSplToken(USDC_MINT, {
+    swr: { refreshInterval: 5000 },
+  });
+
+  const isConnected = status === "connected";
+  const isConnecting = status === "connecting";
+
+  const address = isConnected ? wallet?.account.address.toString() : null;
 
   const handleCopyAddress = async () => {
-    if (!publicKey) return;
+    if (!address) return;
     try {
-      await navigator.clipboard.writeText(publicKey.toBase58());
+      await navigator.clipboard.writeText(address);
       toast.success("Address copied");
     } catch {
       toast.error("Failed to copy");
@@ -53,32 +71,35 @@ export function WalletButton() {
     }
   };
 
+  const handleWalletConnection = () =>
+    connect(connectors[0].id, { autoConnect: false });
+
   return (
     <div className="flex items-center gap-2">
       <Button
         variant="secondary"
-        className="text-label h-8.25 rounded-full px-5"
-        onClick={connected ? handleCopyAddress : () => setVisible(true)}
-        title={connected ? "Click to copy address" : "Connect your wallet"}
+        className="brutalist-button h-9 rounded-lg px-4 font-mono text-xs font-bold tracking-wide"
+        onClick={isConnected ? handleCopyAddress : handleWalletConnection}
+        title={isConnected ? "Click to copy address" : "Connect your wallet"}
       >
-        {connecting ? (
+        {isConnecting ? (
           <>
             <Loader2 className="size-3 animate-spin" />
             CONNECTING
           </>
         ) : (
           <>
-            {wallet?.adapter?.icon ? (
+            {currentConnector?.icon ? (
               <Image
                 width={20}
                 height={20}
-                src={wallet.adapter.icon}
+                src={currentConnector.icon}
                 alt="wallet-icon"
               />
             ) : (
               <Wallet className="size-3" />
             )}
-            {connected ? short : "CONNECT"}
+            {usdcToken.balance?.uiAmount ?? 0} USDC
           </>
         )}
       </Button>
@@ -86,13 +107,17 @@ export function WalletButton() {
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <Button size="icon" variant="secondary" className="rounded-full">
-              <ChevronDown className="size-3" />
+            <Button
+              size="icon"
+              variant="secondary"
+              className="brutalist-button flex size-9 items-center justify-center rounded-lg"
+            >
+              <ChevronDown className="size-4" />
             </Button>
           }
         />
         <DropdownMenuContent align="end" className="w-56">
-          {connected ? (
+          {isConnected ? (
             <>
               <DropdownMenuItem onClick={handleCopyAddress}>
                 <Copy className="mr-2 size-4" />
@@ -106,7 +131,7 @@ export function WalletButton() {
               </DropdownMenuItem>
             </>
           ) : (
-            <DropdownMenuItem onClick={() => setVisible(true)}>
+            <DropdownMenuItem onClick={handleWalletConnection}>
               <Wallet className="mr-2 size-4" />
               Connect wallet
             </DropdownMenuItem>

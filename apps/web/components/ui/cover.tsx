@@ -1,12 +1,19 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRef } from "react";
 import { cn } from "@/lib/utils";
 import { SparklesCore } from "@/components/ui/sparkles";
 
 const beamPositions = Array.from({ length: 7 }, (_, i) => (i + 1) * 8);
+const beamConfigs = beamPositions.map((position, index) => ({
+  position,
+  duration: 1 + (index % 3) * 0.45,
+  delay: 1 + (index % 5) * 0.3,
+  hoverDelay: 0.2 + (index % 4) * 0.15,
+  hoverRepeatDelay: 1 + (index % 3) * 0.35,
+}));
 
 export const Cover = ({
   children,
@@ -17,8 +24,6 @@ export const Cover = ({
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState(false);
-
-  console.log(hovered);
 
   return (
     <div
@@ -71,14 +76,17 @@ export const Cover = ({
           </motion.div>
         )}
       </AnimatePresence>
-      {beamPositions.map((position, index) => (
+      {beamConfigs.map((beam, index) => (
         <Beam
           key={index}
+          id={`beam-${index}`}
           hovered={hovered}
-          duration={Math.random() * 2 + 1}
-          delay={Math.random() * 2 + 1}
+          duration={beam.duration}
+          delay={beam.delay}
+          hoverDelay={beam.hoverDelay}
+          hoverRepeatDelay={beam.hoverRepeatDelay}
           style={{
-            top: `${position}px`,
+            top: `${beam.position}px`,
           }}
         />
       ))}
@@ -121,7 +129,7 @@ export const Cover = ({
       >
         {children}
       </motion.span>
-      <CircleIcon className="absolute -top-0.5 -right-0.5" />
+      <CircleIcon className="absolute -top-0.5 -right-0.5" delay={0} />
       <CircleIcon className="absolute -right-0.5 -bottom-0.5" delay={0.4} />
       <CircleIcon className="absolute -top-0.5 -left-0.5" delay={0.8} />
       <CircleIcon className="absolute -bottom-0.5 -left-0.5" delay={1.6} />
@@ -130,18 +138,23 @@ export const Cover = ({
 };
 
 export const Beam = ({
+  id,
   className,
   delay,
   duration,
+  hoverDelay,
+  hoverRepeatDelay,
   hovered,
   ...svgProps
 }: {
+  id: string;
   className?: string;
-  delay?: number;
-  duration?: number;
+  delay: number;
+  duration: number;
+  hoverDelay: number;
+  hoverRepeatDelay: number;
   hovered?: boolean;
 } & React.ComponentProps<typeof motion.svg>) => {
-  const id = useId();
 
   return (
     <motion.svg
@@ -175,8 +188,8 @@ export const Beam = ({
             duration: hovered ? 0.5 : (duration ?? 2),
             ease: "linear",
             repeat: Infinity,
-            delay: hovered ? Math.random() * (1 - 0.2) + 0.2 : 0,
-            repeatDelay: hovered ? Math.random() * (2 - 1) + 1 : (delay ?? 1),
+            delay: hovered ? (hoverDelay ?? 0.2) : 0,
+            repeatDelay: hovered ? (hoverRepeatDelay ?? 1) : (delay ?? 1),
           }}
         >
           <stop stopColor="var(--foreground)" stopOpacity="0" />
@@ -193,7 +206,7 @@ export const CircleIcon = ({
   delay,
 }: {
   className?: string;
-  delay?: number;
+  delay: number;
 }) => {
   return (
     <div
@@ -201,6 +214,7 @@ export const CircleIcon = ({
         `group pointer-events-none h-2 w-2 animate-pulse rounded-full bg-neutral-600 opacity-20 group-hover/cover:hidden group-hover/cover:bg-white group-hover/cover:opacity-100 dark:bg-white`,
         className
       )}
-    ></div>
+      style={{ animationDelay: `${delay}s` }}
+    />
   );
 };

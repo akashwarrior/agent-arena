@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, UserIcon, Wallet, LogOut, ArrowLeft } from "lucide-react";
+import { Loader2, UserIcon, LogOut, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { authClient, Session } from "@/lib/auth-client";
@@ -118,27 +118,6 @@ export function ProfileForm({ user }: { user: Session["user"] }) {
               />
             </div>
           </div>
-
-          {user.walletAddress && (
-            <div className="flex flex-col gap-2">
-              <Label
-                htmlFor="profile-wallet"
-                className="text-label text-muted-foreground uppercase"
-              >
-                Wallet
-              </Label>
-              <div className="flex items-center gap-3">
-                <Wallet className="size-4 shrink-0 text-muted-foreground" />
-                <Input
-                  id="profile-wallet"
-                  type="text"
-                  className="h-10 rounded-none border-border bg-secondary text-muted-foreground focus-visible:ring-1 focus-visible:ring-foreground"
-                  value={user.walletAddress}
-                  disabled
-                />
-              </div>
-            </div>
-          )}
 
           <Button
             type="submit"

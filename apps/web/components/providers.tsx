@@ -1,21 +1,20 @@
 "use client";
 
 import { ThemeProvider } from "next-themes";
-import { clusterApiUrl } from "@solana/web3.js";
-import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
-import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
-import {
-  ConnectionProvider,
-  WalletProvider,
-} from "@solana/wallet-adapter-react";
-import "@solana/wallet-adapter-react-ui/styles.css";
+import { SolanaProvider } from "@solana/react-hooks";
+import { createClient, autoDiscover } from "@solana/client";
+import type { ClusterMoniker } from "@solana/client";
 
-export function Providers({ children }: { children: React.ReactNode }) {
-  const network =
-    process.env.MAINNET_LIVE === "true"
-      ? WalletAdapterNetwork.Mainnet
-      : WalletAdapterNetwork.Devnet;
-  const endpoint = clusterApiUrl(network);
+type ProvidersProps = Readonly<{
+  children: React.ReactNode;
+  solanaCluster: ClusterMoniker;
+}>;
+
+export function Providers({ children, solanaCluster }: ProvidersProps) {
+  const client = createClient({
+    cluster: solanaCluster,
+    walletConnectors: autoDiscover(),
+  });
 
   return (
     <ThemeProvider
@@ -24,11 +23,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       enableSystem
       disableTransitionOnChange
     >
-      <ConnectionProvider endpoint={endpoint}>
-        <WalletProvider wallets={[]} autoConnect>
-          <WalletModalProvider>{children}</WalletModalProvider>
-        </WalletProvider>
-      </ConnectionProvider>
+      <SolanaProvider client={client}>{children}</SolanaProvider>
     </ThemeProvider>
   );
 }

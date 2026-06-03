@@ -1,59 +1,95 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@repo/db";
+import { GameStatus, prisma } from "@repo/db";
 import type { Prisma } from "@repo/db";
+import { z } from "zod";
+import {
+  gameListSelect,
+  normalizeGameListItem,
+  type GamesResponse,
+} from "@/lib/api-types";
 
 const PAGE_SIZE = 15;
+const MAX_PAGE_SIZE = 50;
+const GAME_STATUSES = Object.values(GameStatus) as [
+  GameStatus,
+  ...GameStatus[],
+];
+const gameStatusSchema = z.enum(GAME_STATUSES);
+
+const statusQuerySchema = z
+  .array(z.string())
+  .transform((status) =>
+    status
+      .flatMap((status) => status.split(","))
+      .map((status) => status.trim())
+      .filter(Boolean)
+  )
+  .pipe(z.array(gameStatusSchema))
+  .transform((status) => Array.from(new Set(status)));
+
+const querySchema = z.object({
+  cursor: z.coerce.number().int().positive().nullable(),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .catch(PAGE_SIZE)
+    .default(PAGE_SIZE)
+    .transform((limit) => Math.min(limit, MAX_PAGE_SIZE)),
+  status: statusQuerySchema,
+});
+
+function parseQuery(searchParams: URLSearchParams) {
+  return querySchema.safeParse({
+    cursor: searchParams.get("cursor"),
+    limit: searchParams.get("limit"),
+    status: searchParams.getAll("status"),
+  });
+}
 
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const cursor = searchParams.get("cursor");
-  const limit = parseInt(searchParams.get("limit") || String(PAGE_SIZE));
-  const statusFilter = searchParams.get("status") as "active" | "ended" | null;
+  const query = parseQuery(request.nextUrl.searchParams);
+
+  if (!query.success) {
+    return NextResponse.json(
+      {
+        error: "Invalid query parameters",
+        issues: query.error.issues.map((issue) => ({
+          path: issue.path.join("."),
+          message: issue.message,
+        })),
+      },
+      { status: 400 }
+    );
+  }
+
+  const { cursor, limit, status } = query.data;
 
   const where: Prisma.GameWhereInput = {};
-  if (statusFilter === "ended") {
-    where.status = "ENDED";
-  } else {
-    where.status = { in: ["LIVE", "UPCOMING"] };
+  if (status.length > 0) {
+    where.status = { in: status };
   }
 
   const games = await prisma.game.findMany({
     where,
     take: limit + 1,
-    ...(cursor ? { skip: 1, cursor: { id: Number(cursor) } } : {}),
-    include: {
-      agents: {
-        include: {
-          agent: true,
-        },
-      },
-      winner: true,
+    ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+    orderBy: {
+      id: "asc",
     },
+    select: gameListSelect,
   });
 
-  let nextCursor: string | null = null;
+  let nextCursor: number | null = null;
   if (games.length > limit) {
     const nextItem = games.pop();
-    nextCursor = String(nextItem!.id);
+    nextCursor = nextItem!.id;
   }
 
-  const normalizedGames = games.map((game) => ({
-    id: game.id,
-    name: game.name,
-    status: game.status,
-    startedAt: game.startedAt,
-    endedAt: game.endedAt,
-    winnerAgentId: game.winnerAgentId,
-    winner: game.winner,
-    createdAt: game.createdAt,
-    updatedAt: game.updatedAt,
-    agents: game.agents.map((ag) => ag.agent),
-    totalPool: Number(game.totalPool) / 1e6,
-    feeAmount: game.feeAmount ? Number(game.feeAmount) / 1e6 : null,
-  }));
-
-  return NextResponse.json({
-    games: normalizedGames,
+  const response: GamesResponse = {
+    games: games.map(normalizeGameListItem),
     nextCursor,
-  });
+  };
+
+  return NextResponse.json(response);
 }

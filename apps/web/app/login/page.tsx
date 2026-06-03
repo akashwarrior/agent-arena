@@ -2,8 +2,46 @@ import { LoginForm } from "@/components/login-form";
 import { Separator } from "@/components/ui/separator";
 import { LoginArt } from "@/components/login-art";
 import Link from "next/link";
+import { prisma } from "@repo/db";
 
-export default function Login() {
+export const revalidate = 3600;
+
+function formatMetric(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    notation: value >= 10_000 ? "compact" : "standard",
+    maximumFractionDigits: value >= 10_000 ? 1 : 0,
+  }).format(value);
+}
+
+async function getLoginStats() {
+  try {
+    const [matches, players, wagered] = await Promise.all([
+      prisma.game.count(),
+      prisma.user.count(),
+      prisma.bet.aggregate({
+        where: { status: { not: "REFUNDED" } },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    return {
+      matches,
+      players,
+      wagered: Number(wagered._sum.amount ?? BigInt(0)) / 1e6,
+    };
+  } catch {
+    return {
+      matches: 0,
+      players: 0,
+      wagered: 0,
+    };
+  }
+}
+
+export default async function Login() {
+  const stats = await getLoginStats();
+  const currentYear = new Date().getFullYear();
+
   return (
     <div className="relative flex min-h-screen overflow-hidden bg-background text-foreground">
       <div className="relative z-10 flex w-full flex-col lg:flex-row">
@@ -30,15 +68,15 @@ export default function Login() {
                 SOL<span className="text-primary">SNAKE</span>
               </h1>
               <p className="max-w-sm font-body text-base leading-relaxed text-muted-foreground">
-                AI agents battle in real-time arenas. Bet on the winner, take
-                the pool.
+                AI agents battle in real-time arenas. Back the highest-ranked
+                agent with active bets and follow live settlement.
               </p>
             </div>
 
             <div className="flex items-center gap-8">
               <div className="flex flex-col gap-0.5">
                 <span className="font-mono text-2xl font-black text-foreground tabular-nums">
-                  1,204
+                  {formatMetric(stats.matches)}
                 </span>
                 <span className="font-mono text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
                   Matches
@@ -50,7 +88,7 @@ export default function Login() {
               />
               <div className="flex flex-col gap-0.5">
                 <span className="font-mono text-2xl font-black text-foreground tabular-nums">
-                  438
+                  {formatMetric(stats.players)}
                 </span>
                 <span className="font-mono text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
                   Players
@@ -62,7 +100,7 @@ export default function Login() {
               />
               <div className="flex flex-col gap-0.5">
                 <span className="font-mono text-2xl font-black text-foreground tabular-nums">
-                  2,847
+                  {formatMetric(stats.wagered)}
                 </span>
                 <span className="font-mono text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
                   USDC Wagered
@@ -72,7 +110,7 @@ export default function Login() {
           </div>
 
           <div className="relative z-10 font-mono text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
-            © 2026 SolSnake
+            © {currentYear} SolSnake
           </div>
         </div>
 
@@ -94,21 +132,7 @@ export default function Login() {
             </div>
 
             <p className="mt-8 text-center font-mono text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
-              By continuing, you agree to our{" "}
-              <a
-                href="#"
-                className="text-foreground transition-colors hover:text-primary"
-              >
-                Terms
-              </a>{" "}
-              and{" "}
-              <a
-                href="#"
-                className="text-foreground transition-colors hover:text-primary"
-              >
-                Privacy Policy
-              </a>
-              .
+              Sign in to enter live markets. Bet responsibly.
             </p>
           </div>
         </div>

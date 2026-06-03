@@ -1,13 +1,12 @@
+import type { GameStatus } from "@repo/db";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 import type {
   GamesResponse,
   GameDetailResponse,
-  BetsResponse,
-  BetPlacementResponse,
-  BetInitResponse,
-  LeaderboardResponse,
-} from "@/lib/swr-types";
+  BetConfirmationResponse,
+  PaymentInitResponse,
+} from "@/lib/api-types";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -18,7 +17,7 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-export function useGames(statusFilter?: "active" | "ended") {
+export function useGames(statusFilters: GameStatus[]) {
   const { data, error, isLoading, size, setSize, isValidating, mutate } =
     useSWRInfinite<GamesResponse>(
       (pageIdx, previousPageData) => {
@@ -26,7 +25,9 @@ export function useGames(statusFilter?: "active" | "ended") {
         const params = new URLSearchParams();
         if (cursor) params.set("cursor", cursor);
         params.set("limit", "15");
-        if (statusFilter) params.set("status", statusFilter);
+        for (const status of statusFilters) {
+          params.append("status", status);
+        }
         return `/api/games?${params.toString()}`;
       },
       fetcher,
@@ -50,15 +51,27 @@ export function useGames(statusFilter?: "active" | "ended") {
   };
 }
 
-export function useGameDetail(gameId: number | null) {
+export function useGameDetail(gameId: number) {
   const { data, error, isLoading, mutate } = useSWR<GameDetailResponse>(
-    gameId ? `/api/games/${gameId}` : null,
+    `/api/games/${gameId}`,
     fetcher,
-    { revalidateOnFocus: false }
+    {
+      revalidateOnFocus: false,
+      refreshInterval(data) {
+        if (data?.game.status === "ENDED") {
+          return 2000;
+        } else if (data?.game.status === "LIVE") {
+          return 5000;
+        } else if (data?.game.status === "UPCOMING" && data.game.startedAt) {
+          return (new Date(data.game.startedAt).getTime() - new Date().getTime());
+        }
+        return 0;
+      },
+    }
   );
 
   return {
-    game: data?.game ?? null,
+    game: data!.game,
     userBets: data?.userBets ?? [],
     isLoading,
     error,
@@ -66,62 +79,16 @@ export function useGameDetail(gameId: number | null) {
   };
 }
 
-export function useBets(autoRefresh: boolean) {
-  const { data, error, isLoading, size, setSize, isValidating, mutate } =
-    useSWRInfinite<BetsResponse>(
-      (pageIdx, previousPageData) => {
-        if (previousPageData && !previousPageData.nextCursor) return null;
-        const cursor = pageIdx === 0 ? null : previousPageData?.nextCursor;
-        const params = new URLSearchParams();
-        if (cursor) params.set("cursor", cursor);
-        params.set("limit", "20");
-        return `/api/bets?${params.toString()}`;
-      },
-      fetcher,
-      { refreshInterval: autoRefresh ? 3000 : undefined }
-    );
-
-  const bets = data ? data.flatMap((page) => page.bets) : [];
-  const hasMore = data ? data[data.length - 1]?.nextCursor !== null : true;
-
-  return {
-    bets,
-    hasMore: !!hasMore,
-    isLoading,
-    isLoadingMore: !!(
-      isLoading ||
-      (size > 0 && data && typeof data[size - 1] === "undefined")
-    ),
-    isValidating,
-    error,
-    loadMore: () => setSize(size + 1),
-    mutate,
-  };
-}
-
-export function useLeaderboard() {
-  const { data, error, isLoading, mutate } = useSWR<LeaderboardResponse>(
-    "/api/leaderboard",
-    fetcher
-  );
-
-  return {
-    leaderboard: data?.leaderboard ?? [],
-    isLoading,
-    error,
-    mutate,
-  };
-}
-
-export async function requestBetSwap(
+export async function createBetDepositPayment(
   gameId: number,
   agentId: string,
-  amount: number
-): Promise<BetInitResponse> {
-  const res = await fetch("/api/bets", {
+  amount: number,
+  walletAddress: string
+): Promise<PaymentInitResponse> {
+  const res = await fetch("/api/payments", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ gameId, agentId, amount }),
+    body: JSON.stringify({ gameId, agentId, amount, walletAddress }),
   });
 
   if (!res.ok) {
@@ -134,19 +101,14 @@ export async function requestBetSwap(
   return res.json();
 }
 
-export async function confirmBet(
-  gameId: number,
-  agentId: string,
-  walletAddress: string,
+export async function confirmBetDepositPayment(
+  paymentId: string,
   txHash: string
-): Promise<BetPlacementResponse> {
-  const res = await fetch("/api/bets", {
-    method: "PATCH",
+): Promise<BetConfirmationResponse> {
+  const res = await fetch(`/api/payments/${paymentId}/confirmation`, {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      gameId,
-      agentId,
-      walletAddress,
       txHash,
     }),
   });
