@@ -3,67 +3,33 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 
-const TERMINAL_LINES = [
-  {
-    time: "00:00:12",
-    text: "Match Initialized: GPT-4o vs Claude",
-    agent: "SYSTEM",
-  },
-  {
-    time: "00:00:13",
-    text: "Loading environment: Coding Clash",
-    agent: "SYSTEM",
-  },
-  {
-    time: "00:00:15",
-    text: "Analyzing prompt constraints...",
-    agent: "GPT-4o",
-  },
-  { time: "00:00:18", text: "Generating initial AST...", agent: "Claude" },
-  {
-    time: "00:00:22",
-    text: "Compiling execution graph... OK",
-    agent: "GPT-4o",
-  },
-  {
-    time: "00:00:25",
-    text: "Found edge case. Applying patch.",
-    agent: "Claude",
-  },
-  { time: "00:00:28", text: "Test suite running...", agent: "SYSTEM" },
-  {
-    time: "00:00:29",
-    text: "> Test 1: Pass | 12ms",
-    agent: "SYSTEM",
-    status: "success",
-  },
-  {
-    time: "00:00:30",
-    text: "> Test 2: Pass | 14ms",
-    agent: "SYSTEM",
-    status: "success",
-  },
-  { time: "00:00:31", text: "> Test 3: Analyzing...", agent: "SYSTEM" },
-];
+type TerminalLine = {
+  time: string;
+  text: string;
+  agent: string;
+  status?: "success";
+};
 
-export function TerminalAnimation() {
+export function TerminalAnimation({ lines }: { lines: TerminalLine[] }) {
+  const lineCount = lines.length;
   const [activeLogIndex, setActiveLogIndex] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveLogIndex((prev) =>
-        prev < TERMINAL_LINES.length - 1 ? prev + 1 : prev
+        prev < lineCount - 1 ? prev + 1 : prev
       );
     }, 1500);
     return () => clearInterval(interval);
-  }, []);
+  }, [lineCount]);
 
   return (
     <>
       <div className="flex flex-1 flex-col justify-end gap-2 p-4">
         <AnimatePresence mode="popLayout">
-          {TERMINAL_LINES.slice(0, activeLogIndex + 1)
-            .slice(-6)
+          {lines
+            .slice(0, activeLogIndex + 1)
+            .slice(-3)
             .map((log, i) => (
               <motion.div
                 key={`${log.time}-${i}`}

@@ -1,59 +1,34 @@
 # `@sol-snake/agents`
 
-Real-time game server that runs continuous arena matches between simulated AI
-agents. Clients connect over WebSocket and receive periodic state
-snapshots they interpolate locally.
+Runtime game server for live arena matches. It reads upcoming games from the
+database, runs the snake engine, streams live match frames over WebSocket, and
+notifies the web app settlement route when a match ends.
 
-The runtime is [Bun](https://bun.sh). Real model-backed agents will plug in by
-implementing the `Strategy` interface in `src/strategy.ts`; today every agent
-runs the same heuristic movement so matches look varied without
-external dependencies.
+## WebSocket Contract
 
-## Endpoints
+Clients connect with the current game id:
 
-| Path      | Method | Description                                |
-| --------- | ------ | ------------------------------------------ |
-| `/`       | WS     | Game stream (WebSocket upgrade)            |
-| `/ws`     | WS     | Alias of `/`                               |
-| `/health` | GET    | JSON health check (`status`, `clients`, …) |
-
-## Wire types
-
-All shapes live in [`@repo/types`](../../packages/types/src/index.ts).
-
-Server to client:
-
-```ts
-ServerMessage;
+```text
+ws://localhost:3001?gameId=123
 ```
 
-Client to server:
+The server only streams running matches. If the requested game is not live, the
+connection is closed.
 
-```ts
-ClientMessage;
-```
+Server messages are protobuf `ServerMessage` values from `@repo/shared`:
 
-## Scripts
+- `init`: sent once on connect with world, agents, food, pool, and remaining time.
+- `tick`: sent while the match is running with updated agents, food, and remaining time.
+- `matchEnd`: sent once when the match ends with the winner agent.
 
-```bash
-bun install
-bun run dev            # bun src/index.ts
-```
+## Internal Endpoint
+
+`GET /bet-confirmed?gameId=<id>&pool=<base-units>` updates the in-memory pool for
+the currently running game. It requires `x-api-key` when `INTERNAL_API_KEY` is set.
 
 ## Configuration
 
-All knobs are environment variables. See `.env.example` for defaults. Notable
-values:
-
-- `PORT` — listen port (default 3001).
-- `MATCH_DURATION_MS` — length of one round (default 3 minutes).
-- `INTERMISSION_MS` — pause between rounds (default 6 seconds).
-- `TICK_INTERVAL_MS` — physics and snapshot tick (default ~24 Hz).
-- `ALLOWED_ORIGINS` — comma-separated allowlist; unset means "any origin".
-
-## Adding real agents
-
-Each agent calls a `Strategy` once per tick. To swap the heuristic for a real
-model, replace `heuristicStrategy` in `src/strategy.ts` (or branch by agent id
-inside it). Strategies must be synchronous; if you need async inference,
-decide every N ticks and cache the latest `targetAngle` between calls.
+- `PORT`: WebSocket server port. Defaults to `3001`.
+- `WEB_APP_URL`: allowed browser origin and settlement base URL. Defaults to `http://localhost:3000`.
+- `INTERNAL_API_KEY`: shared secret for internal requests.
+- `NEXT_PUBLIC_PLATFORM_FEE_BPS`: copied onto newly created games. Defaults to `100`.
