@@ -75,22 +75,10 @@ export default async function GamePage({
                   ROUND{" "}
                   <span className="text-foreground">#{game.id || "---"}</span>
                 </span>
-                <span className="text-label text-muted-foreground">
-                  STATUS{" "}
-                  <span
-                    className={
-                      game.status === "LIVE"
-                        ? "text-success"
-                        : "text-muted-foreground"
-                    }
-                  >
-                    {game.status}
-                  </span>
-                </span>
               </div>
             </div>
 
-            <GameStage initialGame={game} />
+            <GameStage gameId={game.id} />
           </div>
 
           <div className="w-full border-t-2 border-border bg-card md:w-100 md:border-t-0 md:border-l-2">

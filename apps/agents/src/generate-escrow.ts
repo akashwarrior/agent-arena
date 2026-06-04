@@ -10,7 +10,7 @@ async function main() {
 
   const usdcAta = await getAssociatedTokenAddress(
     new PublicKey(DEVNET_USDC),
-    keypair.publicKey
+    keypair.publicKey,
   );
 
   console.log("\n- Shared Escrow Keypair\n");

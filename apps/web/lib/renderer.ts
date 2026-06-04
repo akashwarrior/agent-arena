@@ -16,9 +16,10 @@ export type Camera = {
 
 type Bbox = { x: number; y: number; w: number; h: number };
 
+const TAU = Math.PI * 2;
 const FOOD_RADIUS = 8;
 const FOOD_SIDES = 6;
-const FOOD_ANGLE = (Math.PI * 2) / FOOD_SIDES;
+const FOOD_ANGLE = TAU / FOOD_SIDES;
 const TILE_SIZE = 50;
 const GRID_LINE_WIDTH = 2;
 const EYE_WHITE_RATIO = 0.23;
@@ -26,6 +27,13 @@ const EYE_BLACK_RATIO = 0.12;
 const EYE_LATERAL_RATIO = 0.25;
 const EYE_FORWARD_RATIO = 0.125;
 const PUPIL_FORWARD_RATIO = 0.12;
+const FOOD_POINTS: RenderPoint[] = Array.from(
+  { length: FOOD_SIDES },
+  (_, i) => ({
+    x: FOOD_RADIUS * Math.cos(FOOD_ANGLE * i),
+    y: FOOD_RADIUS * Math.sin(FOOD_ANGLE * i),
+  })
+);
 
 function clamp(v: number, min: number, max: number): number {
   return v < min ? min : v > max ? max : v;
@@ -40,10 +48,7 @@ function inBbox(p: RenderPoint, margin: number, b: Bbox): boolean {
   );
 }
 
-function drawBackground(
-  ctx: CanvasRenderingContext2D,
-  view: Bbox
-) {
+function drawBackground(ctx: CanvasRenderingContext2D, view: Bbox) {
   const startX = Math.max(Math.floor(view.x / TILE_SIZE) * TILE_SIZE, 0);
   const startY = Math.max(Math.floor(view.y / TILE_SIZE) * TILE_SIZE, 0);
   const endX = Math.min(view.x + view.w, WORLD.width);
@@ -51,7 +56,6 @@ function drawBackground(
 
   ctx.fillStyle = "#d4d4d4";
   ctx.fillRect(startX, startY, endX - startX, endY - startY);
-
   ctx.strokeStyle = "#b0b0b0";
   ctx.lineWidth = GRID_LINE_WIDTH;
   ctx.beginPath();
@@ -72,11 +76,12 @@ function drawFood(ctx: CanvasRenderingContext2D, food: Food[], view: Bbox) {
   ctx.beginPath();
   for (const item of food) {
     if (!inBbox(item, FOOD_RADIUS, view)) continue;
-    for (let i = 0; i < FOOD_SIDES; i++) {
-      const x = item.x + FOOD_RADIUS * Math.cos(FOOD_ANGLE * i);
-      const y = item.y + FOOD_RADIUS * Math.sin(FOOD_ANGLE * i);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+
+    const first = FOOD_POINTS[0]!;
+    ctx.moveTo(item.x + first.x, item.y + first.y);
+    for (let i = 1; i < FOOD_POINTS.length; i++) {
+      const point = FOOD_POINTS[i]!;
+      ctx.lineTo(item.x + point.x, item.y + point.y);
     }
     ctx.closePath();
   }
@@ -99,50 +104,43 @@ function drawAgentBody(
     if (!inBbox(section, half, view)) continue;
 
     ctx.beginPath();
-    ctx.arc(section.x, section.y, half, 0, Math.PI * 2);
+    ctx.arc(section.x, section.y, half, 0, TAU);
     ctx.fill();
     ctx.stroke();
   }
-}
-
-function rotateLocal(angle: number, x: number, y: number): RenderPoint {
-  const sin = Math.sin(angle);
-  const cos = Math.cos(angle);
-  return {
-    x: x * cos - y * sin,
-    y: x * sin + y * cos,
-  };
 }
 
 function drawEyes(ctx: CanvasRenderingContext2D, agent: Agent) {
   if (!agent.head) return;
 
   const size = agent.size;
+  const headX = agent.head.x;
+  const headY = agent.head.y;
   const whiteRadius = size * EYE_WHITE_RATIO;
   const blackRadius = size * EYE_BLACK_RATIO;
   const lateral = size * EYE_LATERAL_RATIO;
   const forward = size * EYE_FORWARD_RATIO;
   const pupilForward = size * PUPIL_FORWARD_RATIO;
+  const sin = Math.sin(agent.angle);
+  const cos = Math.cos(agent.angle);
 
-  const left = rotateLocal(agent.angle, -lateral, -forward);
-  const right = rotateLocal(agent.angle, lateral, -forward);
-  const pupil = rotateLocal(agent.angle, 0, -pupilForward);
-
-  const lx = agent.head.x + left.x;
-  const ly = agent.head.y + left.y;
-  const rx = agent.head.x + right.x;
-  const ry = agent.head.y + right.y;
+  const lx = headX - lateral * cos + forward * sin;
+  const ly = headY - lateral * sin - forward * cos;
+  const rx = headX + lateral * cos + forward * sin;
+  const ry = headY + lateral * sin - forward * cos;
+  const pupilX = pupilForward * sin;
+  const pupilY = -pupilForward * cos;
 
   ctx.fillStyle = "#ffffff";
   ctx.beginPath();
-  ctx.arc(lx, ly, whiteRadius, 0, Math.PI * 2);
-  ctx.arc(rx, ry, whiteRadius, 0, Math.PI * 2);
+  ctx.arc(lx, ly, whiteRadius, 0, TAU);
+  ctx.arc(rx, ry, whiteRadius, 0, TAU);
   ctx.fill();
 
   ctx.fillStyle = "#000000";
   ctx.beginPath();
-  ctx.arc(lx + pupil.x, ly + pupil.y, blackRadius, 0, Math.PI * 2);
-  ctx.arc(rx + pupil.x, ry + pupil.y, blackRadius, 0, Math.PI * 2);
+  ctx.arc(lx + pupilX, ly + pupilY, blackRadius, 0, TAU);
+  ctx.arc(rx + pupilX, ry + pupilY, blackRadius, 0, TAU);
   ctx.fill();
 }
 
@@ -169,10 +167,7 @@ export function pickCameraTarget(
   };
 }
 
-export function advanceCamera(
-  camera: Camera,
-  viewport: Viewport,
-): void {
+export function advanceCamera(camera: Camera, viewport: Viewport): void {
   const halfW = Math.min(viewport.width / 2, WORLD.width / 2);
   const halfH = Math.min(viewport.height / 2, WORLD.height / 2);
   camera.x = clamp(camera.x, halfW, WORLD.width - halfW);

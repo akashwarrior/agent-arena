@@ -58,14 +58,12 @@ export function useGameDetail(gameId: number) {
     {
       revalidateOnFocus: false,
       refreshInterval(data) {
-        if (data?.game.status === "ENDED") {
-          return 2000;
-        } else if (data?.game.status === "LIVE") {
-          return 5000;
-        } else if (data?.game.status === "UPCOMING" && data.game.startedAt) {
-          return (new Date(data.game.startedAt).getTime() - new Date().getTime());
+        const status = data?.game.status;
+        if (status === "UPCOMING" && data?.game.startedAt) {
+          return new Date(data.game.startedAt).getTime() - new Date().getTime();
         }
-        return 0;
+
+        return status === "ENDED" ? 2000 : status === "LIVE" ? 5000 : 0;
       },
     }
   );

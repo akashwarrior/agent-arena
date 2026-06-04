@@ -1,387 +1,165 @@
 "use client";
 
-import { useId } from "react";
-import Particles, { ParticlesProvider } from "@tsparticles/react";
-import { loadSlim } from "@tsparticles/slim";
-import { cn } from "@/lib/utils";
+import { memo, useEffect, useId, useRef } from "react";
+
+const TAU = Math.PI * 2;
+const DENSITY_AREA = 400 * 400;
+const MAX_DEVICE_PIXEL_RATIO = 1.5;
+
+type Particle = {
+  x: number;
+  y: number;
+  radius: number;
+  alpha: number;
+  phase: number;
+  twinkleSpeed: number;
+  velocity: number;
+};
 
 type ParticlesProps = {
   id?: string;
   background?: string;
-  particleSize?: number;
   minSize?: number;
   maxSize?: number;
   speed?: number;
   particleColor?: string;
   particleDensity?: number;
 };
-export const SparklesCore = (props: ParticlesProps) => {
-  const {
-    id,
-    background,
-    minSize,
-    maxSize,
-    speed,
-    particleColor,
-    particleDensity,
-  } = props;
 
-  const generatedId = useId();
-  return (
-    <ParticlesProvider init={loadSlim}>
-      <Particles
-        id={id || generatedId}
-        className={cn("h-full w-full")}
-        options={{
-          background: {
-            color: {
-              value: background || "#0d47a1",
-            },
-          },
-          fullScreen: {
-            enable: false,
-            zIndex: 1,
-          },
+function randomBetween(min: number, max: number) {
+  return min + Math.random() * (max - min);
+}
 
-          fpsLimit: 120,
-          interactivity: {
-            events: {
-              onClick: {
-                enable: true,
-                mode: "push",
-              },
-              onHover: {
-                enable: false,
-                mode: "repulse",
-              },
-              resize: true,
-            },
-            modes: {
-              push: {
-                quantity: 4,
-              },
-              repulse: {
-                distance: 200,
-                duration: 0.4,
-              },
-            },
-          },
-          particles: {
-            bounce: {
-              horizontal: {
-                value: 1,
-              },
-              vertical: {
-                value: 1,
-              },
-            },
-            collisions: {
-              absorb: {
-                speed: 2,
-              },
-              bounce: {
-                horizontal: {
-                  value: 1,
-                },
-                vertical: {
-                  value: 1,
-                },
-              },
-              enable: false,
-              maxSpeed: 50,
-              mode: "bounce",
-              overlap: {
-                enable: true,
-                retries: 0,
-              },
-            },
-            color: {
-              value: particleColor || "#ffffff",
-              animation: {
-                h: {
-                  count: 0,
-                  enable: false,
-                  speed: 1,
-                  decay: 0,
-                  delay: 0,
-                  sync: true,
-                  offset: 0,
-                },
-                s: {
-                  count: 0,
-                  enable: false,
-                  speed: 1,
-                  decay: 0,
-                  delay: 0,
-                  sync: true,
-                  offset: 0,
-                },
-                l: {
-                  count: 0,
-                  enable: false,
-                  speed: 1,
-                  decay: 0,
-                  delay: 0,
-                  sync: true,
-                  offset: 0,
-                },
-              },
-            },
-            groups: {},
-            move: {
-              angle: {
-                offset: 0,
-                value: 90,
-              },
-              center: {
-                x: 50,
-                y: 50,
-                mode: "percent",
-                radius: 0,
-              },
-              decay: 0,
-              distance: {},
-              direction: "none",
-              drift: 0,
-              enable: true,
-              gravity: {
-                acceleration: 9.81,
-                enable: false,
-                inverse: false,
-                maxSpeed: 50,
-              },
-              path: {
-                clamp: true,
-                delay: {
-                  value: 0,
-                },
-                enable: false,
-                options: {},
-              },
-              outModes: {
-                default: "out",
-              },
-              random: false,
-              size: false,
-              speed: {
-                min: 0.1,
-                max: 1,
-              },
-              spin: {
-                acceleration: 0,
-                enable: false,
-              },
-              straight: false,
-              vibrate: false,
-              warp: false,
-            },
-            number: {
-              density: {
-                enable: true,
-                width: 400,
-                height: 400,
-              },
-              limit: {
-                mode: "delete",
-                value: 0,
-              },
-              value: particleDensity || 120,
-            },
-            opacity: {
-              value: {
-                min: 0.1,
-                max: 1,
-              },
-              animation: {
-                count: 0,
-                enable: true,
-                speed: speed || 4,
-                decay: 0,
-                delay: 0,
-                sync: false,
-                mode: "auto",
-                startValue: "random",
-                destroy: "none",
-              },
-            },
-            reduceDuplicates: false,
-            shadow: {
-              blur: 0,
-              color: {
-                value: "#000",
-              },
-              enable: false,
-              offset: {
-                x: 0,
-                y: 0,
-              },
-            },
-            shape: {
-              close: true,
-              options: {},
-              type: "circle",
-            },
-            size: {
-              value: {
-                min: minSize || 1,
-                max: maxSize || 3,
-              },
-              animation: {
-                count: 0,
-                enable: false,
-                speed: 5,
-                decay: 0,
-                delay: 0,
-                sync: false,
-                mode: "auto",
-                startValue: "random",
-                destroy: "none",
-              },
-            },
-            stroke: {
-              width: 0,
-            },
-            zIndex: {
-              value: 0,
-              opacityRate: 1,
-              sizeRate: 1,
-              velocityRate: 1,
-            },
-            destroy: {
-              bounds: {},
-              mode: "none",
-              split: {
-                count: 1,
-                factor: {
-                  value: 3,
-                },
-                rate: {
-                  value: {
-                    min: 4,
-                    max: 9,
-                  },
-                },
-                sizeOffset: true,
-              },
-            },
-            roll: {
-              darken: {
-                enable: false,
-                value: 0,
-              },
-              enable: false,
-              enlighten: {
-                enable: false,
-                value: 0,
-              },
-              mode: "vertical",
-              speed: 25,
-            },
-            tilt: {
-              value: 0,
-              animation: {
-                enable: false,
-                speed: 0,
-                decay: 0,
-                sync: false,
-              },
-              direction: "clockwise",
-              enable: false,
-            },
-            twinkle: {
-              lines: {
-                enable: false,
-                frequency: 0.05,
-                opacity: 1,
-              },
-              particles: {
-                enable: false,
-                frequency: 0.05,
-                opacity: 1,
-              },
-            },
-            wobble: {
-              distance: 5,
-              enable: false,
-              speed: {
-                angle: 50,
-                move: 10,
-              },
-            },
-            life: {
-              count: 0,
-              delay: {
-                value: 0,
-                sync: false,
-              },
-              duration: {
-                value: 0,
-                sync: false,
-              },
-            },
-            rotate: {
-              value: 0,
-              animation: {
-                enable: false,
-                speed: 0,
-                decay: 0,
-                sync: false,
-              },
-              direction: "clockwise",
-              path: false,
-            },
-            orbit: {
-              animation: {
-                count: 0,
-                enable: false,
-                speed: 1,
-                decay: 0,
-                delay: 0,
-                sync: false,
-              },
-              enable: false,
-              opacity: 1,
-              rotation: {
-                value: 45,
-              },
-              width: 1,
-            },
-            links: {
-              blink: false,
-              color: {
-                value: "#fff",
-              },
-              consent: false,
-              distance: 100,
-              enable: false,
-              frequency: 1,
-              opacity: 1,
-              shadow: {
-                blur: 5,
-                color: {
-                  value: "#000",
-                },
-                enable: false,
-              },
-              triangles: {
-                enable: false,
-                frequency: 1,
-              },
-              width: 1,
-              warp: false,
-            },
-            repulse: {
-              value: 0,
-              enabled: false,
-              distance: 1,
-              duration: 1,
-              factor: 1,
-              speed: 1,
-            },
-          },
-          detectRetina: true,
-        }}
-      />
-    </ParticlesProvider>
+function getParticleCount(width: number, height: number, density: number) {
+  if (!width || !height || !density) return 0;
+  return Math.max(1, Math.round((density * width * height) / DENSITY_AREA));
+}
+
+function createParticles({
+  width,
+  height,
+  count,
+  minSize,
+  maxSize,
+  speed,
+}: {
+  width: number;
+  height: number;
+  count: number;
+  minSize: number;
+  maxSize: number;
+  speed: number;
+}) {
+  return Array.from(
+    { length: count },
+    (): Particle => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      radius: randomBetween(minSize, maxSize),
+      alpha: randomBetween(0.1, 1),
+      phase: Math.random() * TAU,
+      twinkleSpeed: randomBetween(0.5, 1.25) * speed,
+      velocity: randomBetween(0.08, 0.35),
+    })
   );
-};
+}
+
+export const SparklesCore = memo(function SparklesCore({
+  id,
+  background = "#0d47a1",
+  minSize = 1,
+  maxSize = 3,
+  speed = 4,
+  particleColor = "#ffffff",
+  particleDensity = 120,
+}: ParticlesProps) {
+  const generatedId = useId();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+
+    let animationFrame = 0;
+    let width = 0;
+    let height = 0;
+    let ratio = 1;
+    let lastFrame = performance.now();
+    let particles: Particle[] = [];
+
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      width = Math.max(1, Math.floor(rect.width));
+      height = Math.max(1, Math.floor(rect.height));
+      ratio = Math.min(devicePixelRatio || 1, MAX_DEVICE_PIXEL_RATIO);
+
+      const targetW = Math.floor(width * ratio);
+      const targetH = Math.floor(height * ratio);
+      if (canvas.width !== targetW) canvas.width = targetW;
+      if (canvas.height !== targetH) canvas.height = targetH;
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+      particles = createParticles({
+        width,
+        height,
+        count: getParticleCount(width, height, particleDensity),
+        minSize,
+        maxSize,
+        speed,
+      });
+    };
+
+    const render = (time: number) => {
+      const delta = Math.min(64, time - lastFrame) / 16.67;
+      lastFrame = time;
+
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+
+      if (background !== "transparent") {
+        ctx.fillStyle = background;
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      ctx.fillStyle = particleColor;
+      for (const particle of particles) {
+        particle.x += particle.velocity * delta;
+        if (particle.x - particle.radius > width) {
+          particle.x = -particle.radius;
+          particle.y = Math.random() * height;
+        }
+
+        const twinkle =
+          0.55 +
+          0.45 *
+            Math.sin(time * 0.001 * particle.twinkleSpeed + particle.phase);
+        ctx.globalAlpha = particle.alpha * twinkle;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.radius, 0, TAU);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      animationFrame = requestAnimationFrame(render);
+    };
+
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvas);
+    animationFrame = requestAnimationFrame(render);
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      observer.disconnect();
+    };
+  }, [background, maxSize, minSize, particleColor, particleDensity, speed]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      id={id || generatedId}
+      className="block h-full w-full"
+    />
+  );
+});

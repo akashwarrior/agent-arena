@@ -87,13 +87,9 @@ const SERVER_MESSAGE: ServerMessage = {
 
 function encodePayload(payload: ServerPayload): Uint8Array {
   SERVER_MESSAGE.payload = payload;
-  return toBinary(
-    ServerMessageSchema,
-    SERVER_MESSAGE,
-    {
-      writeUnknownFields: false,
-    },
-  );
+  return toBinary(ServerMessageSchema, SERVER_MESSAGE, {
+    writeUnknownFields: false,
+  });
 }
 
 function createTickPayload(): ServerPayload {
@@ -323,7 +319,10 @@ async function startGameLoop() {
 
     switch (engine.getStatus()) {
       case "RUNNING":
-        const deltaSeconds = Math.max(0, Math.min((now - lastEngineTickAt) / 1000, 0.12));
+        const deltaSeconds = Math.max(
+          0,
+          Math.min((now - lastEngineTickAt) / 1000, 0.12),
+        );
         engine.tick(deltaSeconds, now);
         lastEngineTickAt = now;
         if (engine.getStatus() === "ENDED") {
@@ -483,7 +482,10 @@ const server = Bun.serve({
     const url = new URL(request.url);
 
     const requestedGameId = parseGameId(url.searchParams.get("gameId"));
-    if (requestedGameId !== engine.getId() || engine.getStatus() !== "RUNNING") {
+    if (
+      requestedGameId !== engine.getId() ||
+      engine.getStatus() !== "RUNNING"
+    ) {
       return new Response("Invalid gameId", { status: 400 });
     }
 
@@ -516,7 +518,7 @@ const server = Bun.serve({
     perMessageDeflate: { compress: "disable", decompress: "disable" },
     sendPings: false,
 
-    message() { },
+    message() {},
 
     close() {
       console.log("[arena] client disconnected", {

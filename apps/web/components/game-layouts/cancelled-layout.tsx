@@ -2,7 +2,7 @@ import { AlertTriangle, XCircle } from "lucide-react";
 
 export function CancelledLayout() {
   return (
-    <div className="relative flex w-full max-w-5xl flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-border bg-card shadow-[4px_4px_0px_0px_var(--border)] min-h-100 md:aspect-video">
+    <div className="relative flex min-h-100 w-full max-w-5xl flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-border bg-card shadow-[4px_4px_0px_0px_var(--border)] md:aspect-video">
       <div className="absolute inset-0 bg-red-500/5" />
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px]" />
 

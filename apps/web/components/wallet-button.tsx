@@ -20,14 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-import {
-  Loader2,
-  Wallet,
-  ChevronDown,
-  Copy,
-  LogOut,
-  User,
-} from "lucide-react";
+import { Loader2, Wallet, ChevronDown, Copy, LogOut, User } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -36,7 +29,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
 
 export function WalletButton() {
   const router = useRouter();
@@ -112,7 +104,7 @@ export function WalletButton() {
     <div className="flex items-center gap-2">
       <Button
         variant="secondary"
-        className="brutalist-button h-9 rounded-lg px-4 font-mono text-xs font-bold tracking-wide gap-2"
+        className="brutalist-button h-9 gap-2 rounded-lg px-4 font-mono text-xs font-bold tracking-wide"
         onClick={connected ? handleCopyAddress : openConnectDialog}
         title={connected ? "Click to copy address" : "Connect your wallet"}
       >
@@ -138,10 +130,12 @@ export function WalletButton() {
                 {String(Number(balance?.uiAmount || "0.00") + " USDC")}
               </TextShimmer>
             )}
-            <span className={isFetching ? "hidden" : "flex items-center justify-center gap-1"}>
-              <SlidingNumber
-                value={Number(balance?.uiAmount || "0.00")}
-              />
+            <span
+              className={
+                isFetching ? "hidden" : "flex items-center justify-center gap-1"
+              }
+            >
+              <SlidingNumber value={Number(balance?.uiAmount || "0.00")} />
               USDC
             </span>
           </>
@@ -177,10 +171,7 @@ export function WalletButton() {
               </DropdownMenuItem>
             </>
           ) : (
-            <DropdownMenuItem
-              onClick={openConnectDialog}
-              disabled={!isReady}
-            >
+            <DropdownMenuItem onClick={openConnectDialog} disabled={!isReady}>
               <Wallet className="mr-2 size-4" />
               Connect wallet
             </DropdownMenuItem>

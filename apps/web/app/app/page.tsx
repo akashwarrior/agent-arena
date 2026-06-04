@@ -97,7 +97,7 @@ export default async function App() {
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-7xl flex-col px-6 py-8">
           <div className="mb-6">
-            <h1 className="font-display text-4xl font-black tracking-tight text-foreground sm:text-5xl">
+            <h1 className="flex items-center justify-start gap-3 font-display text-4xl font-black tracking-tight text-foreground sm:text-5xl">
               LIVE{" "}
               <span className="text-primary">
                 <Cover>MARKETS</Cover>

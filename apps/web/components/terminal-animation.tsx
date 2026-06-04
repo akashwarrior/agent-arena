@@ -16,20 +16,18 @@ export function TerminalAnimation({ lines }: { lines: TerminalLine[] }) {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setActiveLogIndex((prev) =>
-        prev < lineCount - 1 ? prev + 1 : prev
-      );
+      setActiveLogIndex((prev) => (prev < lineCount - 1 ? prev + 1 : prev));
     }, 1500);
     return () => clearInterval(interval);
   }, [lineCount]);
 
   return (
-    <>
-      <div className="flex flex-1 flex-col justify-end gap-2 p-4">
+    <div className="flex max-h-72 min-h-72 flex-col justify-end gap-2 overflow-hidden p-4">
+      <div className="flex flex-col gap-1 overflow-y-auto [&::-webkit-scrollbar]:hidden">
         <AnimatePresence mode="popLayout">
           {lines
             .slice(0, activeLogIndex + 1)
-            .slice(-3)
+            .slice(-4)
             .map((log, i) => (
               <motion.div
                 key={`${log.time}-${i}`}
@@ -61,15 +59,15 @@ export function TerminalAnimation({ lines }: { lines: TerminalLine[] }) {
               </motion.div>
             ))}
         </AnimatePresence>
-        <div className="mt-2 flex items-center gap-2">
-          <span className="text-success">root@arena:~#</span>
-          <motion.div
-            animate={{ opacity: [1, 0] }}
-            transition={{ repeat: Infinity, duration: 0.8 }}
-            className="h-3.5 w-1.5 bg-foreground"
-          />
-        </div>
       </div>
-    </>
+      <div className="mt-2 flex items-center gap-2">
+        <span className="text-success">root@arena:~#</span>
+        <motion.div
+          animate={{ opacity: [1, 0] }}
+          transition={{ repeat: Infinity, duration: 0.8 }}
+          className="h-3.5 w-1.5 bg-foreground"
+        />
+      </div>
+    </div>
   );
 }

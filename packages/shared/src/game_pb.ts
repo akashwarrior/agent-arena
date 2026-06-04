@@ -9,8 +9,11 @@ import type { Message } from "@bufbuild/protobuf";
 /**
  * Describes the file game.proto.
  */
-export const file_game: GenFile = /*@__PURE__*/
-  fileDesc("CgpnYW1lLnByb3RvIh0KBVBvaW50EgkKAXgYASABKAISCQoBeRgCIAEoAiIcCgRGb29kEgkKAXgYASABKAISCQoBeRgCIAEoAiLTAQoFQWdlbnQSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRINCgVjb2xvchgDIAEoCRIOCgZhY2NlbnQYBCABKAkSDQoFYWxpdmUYBSABKAgSDQoFc2NvcmUYBiABKA0SDAoEc2l6ZRgHIAEoAhINCgVhbmdsZRgIIAEoAhIUCgRoZWFkGAkgASgLMgYuUG9pbnQSFAoEYm9keRgKIAMoCzIGLlBvaW50Eg4KBmxlbmd0aBgLIAEoDRIRCgRyYW5rGAwgASgNSACIAQFCBwoFX3JhbmsiTQoNTGl2ZU1hdGNoVGljaxIPCgdnYW1lX2lkGAEgASgNEhMKBGZvb2QYAiADKAsyBS5Gb29kEhYKBmFnZW50cxgDIAMoCzIGLkFnZW50IjMKCE1hdGNoRW5kEg8KB2dhbWVfaWQYASABKA0SFgoGd2lubmVyGAIgASgLMgYuQWdlbnQiWgoNU2VydmVyTWVzc2FnZRIeCgR0aWNrGAEgASgLMg4uTGl2ZU1hdGNoVGlja0gAEh4KCW1hdGNoX2VuZBgCIAEoCzIJLk1hdGNoRW5kSABCCQoHcGF5bG9hZGIGcHJvdG8z");
+export const file_game: GenFile =
+  /*@__PURE__*/
+  fileDesc(
+    "CgpnYW1lLnByb3RvIh0KBVBvaW50EgkKAXgYASABKAISCQoBeRgCIAEoAiIcCgRGb29kEgkKAXgYASABKAISCQoBeRgCIAEoAiLTAQoFQWdlbnQSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRINCgVjb2xvchgDIAEoCRIOCgZhY2NlbnQYBCABKAkSDQoFYWxpdmUYBSABKAgSDQoFc2NvcmUYBiABKA0SDAoEc2l6ZRgHIAEoAhINCgVhbmdsZRgIIAEoAhIUCgRoZWFkGAkgASgLMgYuUG9pbnQSFAoEYm9keRgKIAMoCzIGLlBvaW50Eg4KBmxlbmd0aBgLIAEoDRIRCgRyYW5rGAwgASgNSACIAQFCBwoFX3JhbmsiTQoNTGl2ZU1hdGNoVGljaxIPCgdnYW1lX2lkGAEgASgNEhMKBGZvb2QYAiADKAsyBS5Gb29kEhYKBmFnZW50cxgDIAMoCzIGLkFnZW50IjMKCE1hdGNoRW5kEg8KB2dhbWVfaWQYASABKA0SFgoGd2lubmVyGAIgASgLMgYuQWdlbnQiWgoNU2VydmVyTWVzc2FnZRIeCgR0aWNrGAEgASgLMg4uTGl2ZU1hdGNoVGlja0gAEh4KCW1hdGNoX2VuZBgCIAEoCzIJLk1hdGNoRW5kSABCCQoHcGF5bG9hZGIGcHJvdG8z",
+  );
 
 /**
  * @generated from message Point
@@ -31,7 +34,8 @@ export type Point = Message<"Point"> & {
  * Describes the message Point.
  * Use `create(PointSchema)` to create a new message.
  */
-export const PointSchema: GenMessage<Point> = /*@__PURE__*/
+export const PointSchema: GenMessage<Point> =
+  /*@__PURE__*/
   messageDesc(file_game, 0);
 
 /**
@@ -53,7 +57,8 @@ export type Food = Message<"Food"> & {
  * Describes the message Food.
  * Use `create(FoodSchema)` to create a new message.
  */
-export const FoodSchema: GenMessage<Food> = /*@__PURE__*/
+export const FoodSchema: GenMessage<Food> =
+  /*@__PURE__*/
   messageDesc(file_game, 1);
 
 /**
@@ -125,7 +130,8 @@ export type Agent = Message<"Agent"> & {
  * Describes the message Agent.
  * Use `create(AgentSchema)` to create a new message.
  */
-export const AgentSchema: GenMessage<Agent> = /*@__PURE__*/
+export const AgentSchema: GenMessage<Agent> =
+  /*@__PURE__*/
   messageDesc(file_game, 2);
 
 /**
@@ -152,7 +158,8 @@ export type LiveMatchTick = Message<"LiveMatchTick"> & {
  * Describes the message LiveMatchTick.
  * Use `create(LiveMatchTickSchema)` to create a new message.
  */
-export const LiveMatchTickSchema: GenMessage<LiveMatchTick> = /*@__PURE__*/
+export const LiveMatchTickSchema: GenMessage<LiveMatchTick> =
+  /*@__PURE__*/
   messageDesc(file_game, 3);
 
 /**
@@ -174,7 +181,8 @@ export type MatchEnd = Message<"MatchEnd"> & {
  * Describes the message MatchEnd.
  * Use `create(MatchEndSchema)` to create a new message.
  */
-export const MatchEndSchema: GenMessage<MatchEnd> = /*@__PURE__*/
+export const MatchEndSchema: GenMessage<MatchEnd> =
+  /*@__PURE__*/
   messageDesc(file_game, 4);
 
 /**
@@ -184,25 +192,28 @@ export type ServerMessage = Message<"ServerMessage"> & {
   /**
    * @generated from oneof ServerMessage.payload
    */
-  payload: {
-    /**
-     * @generated from field: LiveMatchTick tick = 1;
-     */
-    value: LiveMatchTick;
-    case: "tick";
-  } | {
-    /**
-     * @generated from field: MatchEnd match_end = 2;
-     */
-    value: MatchEnd;
-    case: "matchEnd";
-  } | { case: undefined; value?: undefined };
+  payload:
+    | {
+        /**
+         * @generated from field: LiveMatchTick tick = 1;
+         */
+        value: LiveMatchTick;
+        case: "tick";
+      }
+    | {
+        /**
+         * @generated from field: MatchEnd match_end = 2;
+         */
+        value: MatchEnd;
+        case: "matchEnd";
+      }
+    | { case: undefined; value?: undefined };
 };
 
 /**
  * Describes the message ServerMessage.
  * Use `create(ServerMessageSchema)` to create a new message.
  */
-export const ServerMessageSchema: GenMessage<ServerMessage> = /*@__PURE__*/
+export const ServerMessageSchema: GenMessage<ServerMessage> =
+  /*@__PURE__*/
   messageDesc(file_game, 5);
-

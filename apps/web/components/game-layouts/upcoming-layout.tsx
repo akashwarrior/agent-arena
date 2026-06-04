@@ -1,63 +1,21 @@
 "use client";
 
-import type { GameWithAgents } from "@/lib/api-types";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Clock, Users, Trophy } from "lucide-react";
 
+type UpcomingLayoutProps = {
+  pool: number;
+  startedAt: string | null;
+  agentsCount: number;
+};
+
 export function UpcomingLayout({
-  game,
-  onCountdownEnd,
-}: {
-  game: GameWithAgents;
-  onCountdownEnd: () => void;
-}) {
-  const [timeLeft, setTimeLeft] = useState("TBA");
-  const lastRefreshAtRef = useRef(0);
-
-  useEffect(() => {
-    if (!game.startedAt) return;
-
-    const updateCountdown = () => {
-      const now = new Date();
-      const diffMs = new Date(game.startedAt!).getTime() - now.getTime();
-
-      if (diffMs <= 0) {
-        setTimeLeft("Starting soon...");
-        if (now.getTime() - lastRefreshAtRef.current >= 1000) {
-          lastRefreshAtRef.current = now.getTime();
-          onCountdownEnd();
-        }
-      } else {
-        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        const diffHours = Math.floor(
-          (diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-        );
-        const diffMinutes = Math.floor(
-          (diffMs % (1000 * 60 * 60)) / (1000 * 60)
-        );
-        const diffSeconds = Math.floor((diffMs % (1000 * 60)) / 1000);
-
-        let timeString = "";
-        if (diffDays > 0) timeString += `${diffDays}d `;
-        if (diffHours > 0 || diffDays > 0) timeString += `${diffHours}h `;
-        if (diffMinutes > 0 || diffHours > 0 || diffDays > 0)
-          timeString += `${diffMinutes}m `;
-        timeString += `${diffSeconds}s`;
-
-        setTimeLeft(timeString);
-      }
-    };
-
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 1000);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, []);
-
+  startedAt,
+  pool,
+  agentsCount,
+}: UpcomingLayoutProps) {
   return (
-    <div className="relative flex w-full max-w-5xl flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-border bg-card shadow-[4px_4px_0px_0px_var(--border)] min-h-[400px] md:aspect-video">
+    <div className="relative flex min-h-100 w-full max-w-5xl flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-border bg-card shadow-[4px_4px_0px_0px_var(--border)] md:aspect-video">
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px]" />
 
       <div className="z-10 m-auto flex flex-col items-center gap-5 p-5 md:gap-10 md:p-8">
@@ -71,7 +29,7 @@ export function UpcomingLayout({
           </h2>
           <div className="mt-4 inline-block -rotate-2 transform border-2 border-black bg-primary px-4 py-2 text-primary-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] md:mt-6 md:px-6 md:py-3 md:shadow-[6px_6px_0px_0px_rgba(0,0,0,0.5)]">
             <p className="font-mono text-xl font-black tracking-wider uppercase md:text-3xl">
-              {game.startedAt ? `${timeLeft}` : "TBA"}
+              {startedAt ? <Timer startedAt={startedAt} /> : "TBA"}
             </p>
           </div>
         </div>
@@ -86,7 +44,7 @@ export function UpcomingLayout({
                 Prize Pool
               </span>
               <span className="font-display text-lg font-black text-foreground md:text-2xl">
-                {game.totalPool} USDC
+                {pool} USDC
               </span>
             </div>
           </div>
@@ -99,7 +57,7 @@ export function UpcomingLayout({
                 Contenders
               </span>
               <span className="font-display text-lg font-black text-foreground md:text-2xl">
-                {game.agents?.length || 0} Agents
+                {agentsCount} Agents
               </span>
             </div>
           </div>
@@ -107,4 +65,47 @@ export function UpcomingLayout({
       </div>
     </div>
   );
+}
+
+type TimerProps = {
+  startedAt: string;
+};
+
+function Timer({ startedAt }: TimerProps) {
+  const [timeLeft, setTimeLeft] = useState("TBA");
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      const now = new Date();
+      const diffMs = new Date(startedAt).getTime() - now.getTime();
+
+      if (diffMs <= 0) {
+        setTimeLeft("Starting soon...");
+      } else {
+        const diffHours = Math.floor(
+          (diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+        );
+        const diffMinutes = Math.floor(
+          (diffMs % (1000 * 60 * 60)) / (1000 * 60)
+        );
+        const diffSeconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+        let timeString = "";
+        if (diffHours > 0) timeString += `${diffHours}h `;
+        if (diffMinutes > 0 || diffHours > 0) timeString += `${diffMinutes}m `;
+        timeString += `${diffSeconds}s`;
+
+        setTimeLeft(timeString);
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
+
+  return timeLeft;
 }

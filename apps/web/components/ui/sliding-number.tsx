@@ -1,78 +1,69 @@
-'use client';
-import { useEffect, useId } from 'react';
+"use client";
+
+import { memo, useEffect } from "react";
 import {
-  MotionValue,
   motion,
+  type MotionValue,
+  useMotionValue,
   useSpring,
   useTransform,
-  motionValue,
-} from 'motion/react';
-import useMeasure from 'react-use-measure';
+} from "motion/react";
 
 const TRANSITION = {
-  type: 'spring' as const,
+  type: "spring",
   stiffness: 280,
   damping: 18,
   mass: 0.3,
-};
+} as const;
 
-function Digit({ value, place }: { value: number; place: number }) {
-  const valueRoundedToPlace = Math.floor(value / place) % 10;
-  const initial = motionValue(valueRoundedToPlace);
-  const animatedValue = useSpring(initial, TRANSITION);
+const DIGITS = Array.from({ length: 10 }, (_, index) => index);
+
+const Digit = memo(function Digit({ value }: { value: number }) {
+  const motionValue = useMotionValue(value);
+  const animatedValue = useSpring(motionValue, TRANSITION);
 
   useEffect(() => {
-    animatedValue.set(valueRoundedToPlace);
-  }, [animatedValue, valueRoundedToPlace]);
+    motionValue.set(value);
+  }, [motionValue, value]);
 
   return (
-    <div className='relative inline-block w-[1ch] overflow-x-visible overflow-y-clip leading-none tabular-nums'>
-      <div className='invisible'>0</div>
-      {Array.from({ length: 10 }, (_, i) => (
-        <Number key={i} mv={animatedValue} number={i} />
+    <span className="relative inline-block h-[1em] w-[1ch] overflow-x-visible overflow-y-clip leading-none tabular-nums">
+      <span className="invisible block h-[1em]">0</span>
+      {DIGITS.map((digit) => (
+        <DigitGlyph key={digit} mv={animatedValue} number={digit} />
       ))}
-    </div>
+    </span>
   );
-}
+});
 
-function Number({ mv, number }: { mv: MotionValue<number>; number: number }) {
-  const uniqueId = useId();
-  const [ref, bounds] = useMeasure();
-
+const DigitGlyph = memo(function DigitGlyph({
+  mv,
+  number,
+}: {
+  mv: MotionValue<number>;
+  number: number;
+}) {
   const y = useTransform(mv, (latest) => {
-    if (!bounds.height) return 0;
     const placeValue = latest % 10;
     const offset = (10 + number - placeValue) % 10;
-    let memo = offset * bounds.height;
+    let position = offset;
 
     if (offset > 5) {
-      memo -= 10 * bounds.height;
+      position -= 10;
     }
 
-    return memo;
+    return `${position}em`;
   });
-
-  // don't render the animated number until we know the height
-  if (!bounds.height) {
-    return (
-      <span ref={ref} className='invisible absolute'>
-        {number}
-      </span>
-    );
-  }
 
   return (
     <motion.span
       style={{ y }}
-      layoutId={`${uniqueId}-${number}`}
-      className='absolute inset-0 flex items-center justify-center'
-      transition={TRANSITION}
-      ref={ref}
+      className="absolute inset-0 flex h-[1em] items-center justify-center will-change-transform"
     >
       {number}
     </motion.span>
   );
-}
+});
 
 type SlidingNumberProps = {
   value: number;
@@ -80,43 +71,35 @@ type SlidingNumberProps = {
   decimalSeparator?: string;
 };
 
-export function SlidingNumber({
+export const SlidingNumber = memo(function SlidingNumber({
   value,
   padStart = false,
-  decimalSeparator = '.',
+  decimalSeparator = ".",
 }: SlidingNumberProps) {
   const absValue = Math.abs(value);
-  const [integerPart, decimalPart] = absValue.toString().split('.');
+  const [integerPart, decimalPart] = absValue.toString().split(".");
   const integerValue = parseInt(integerPart, 10);
   const paddedInteger =
     padStart && integerValue < 10 ? `0${integerPart}` : integerPart;
-  const integerDigits = paddedInteger.split('');
-  const integerPlaces = integerDigits.map((_, i) =>
-    Math.pow(10, integerDigits.length - i - 1)
-  );
+  const integerDigits = paddedInteger.split("");
 
   return (
-    <div className='flex items-center'>
-      {value < 0 && '-'}
-      {integerDigits.map((_, index) => (
+    <div className="flex items-center">
+      {value < 0 && "-"}
+      {integerDigits.map((digit, index) => (
         <Digit
-          key={`pos-${integerPlaces[index]}`}
-          value={integerValue}
-          place={integerPlaces[index]}
+          key={`integer-${integerDigits.length - index - 1}`}
+          value={Number(digit)}
         />
       ))}
       {decimalPart && (
         <>
           <span>{decimalSeparator}</span>
-          {decimalPart.split('').map((_, index) => (
-            <Digit
-              key={`decimal-${index}`}
-              value={parseInt(decimalPart, 10)}
-              place={Math.pow(10, decimalPart.length - index - 1)}
-            />
+          {decimalPart.split("").map((digit, index) => (
+            <Digit key={`decimal-${index}`} value={Number(digit)} />
           ))}
         </>
       )}
     </div>
   );
-}
+});

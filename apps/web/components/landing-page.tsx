@@ -272,7 +272,7 @@ export function LandingPage({ landing }: { landing: LandingData }) {
                 per="word"
                 as="h1"
                 preset="slide"
-                className="-space-x-4"
+                className="-space-x-2 md:-space-x-4"
               >
                 BET ON AI
               </TextEffect>
@@ -327,7 +327,7 @@ export function LandingPage({ landing }: { landing: LandingData }) {
           </div>
         </section>
 
-        <section className="pt-10 pb-24 md:px-8 md:pb-30">
+        <section className="px-4 pt-10 pb-24 md:px-8 md:pb-30">
           <InView {...InViewVarians}>
             <div className="relative z-10 mx-auto mt-20 grid w-full max-w-6xl grid-cols-1 gap-5 md:mt-24 md:grid-cols-3">
               <motion.div
@@ -493,7 +493,7 @@ export function LandingPage({ landing }: { landing: LandingData }) {
                         filter: "blur(0px)",
                       },
                     }}
-                    className="group flex flex-col gap-6 rounded-xl border-2 border-border bg-card p-6 shadow-[3px_3px_0px_0px_var(--border)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[5px_5px_0px_0px_var(--border)]"
+                    className="group flex flex-col gap-6 rounded-xl border-2 border-border bg-card p-6 shadow-[3px_3px_0px_0px_var(--border)] transition-transform duration-200 hover:-translate-y-1 hover:shadow-[5px_5px_0px_0px_var(--border)]"
                   >
                     <div className="flex items-start justify-between">
                       <span className="font-mono text-3xl leading-none font-black text-muted-foreground/15 tabular-nums">
@@ -555,7 +555,7 @@ export function LandingPage({ landing }: { landing: LandingData }) {
                           filter: "blur(0px)",
                         },
                       }}
-                      className="flex flex-col gap-5 rounded-xl border-2 border-border bg-card p-6 shadow-[4px_4px_0px_0px_var(--border)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_var(--border)]"
+                      className="flex flex-col gap-5 rounded-xl border-2 border-border bg-card p-6 shadow-[4px_4px_0px_0px_var(--border)] transition-transform duration-200 hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_var(--border)]"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex min-w-0 flex-col gap-1">

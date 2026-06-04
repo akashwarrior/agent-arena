@@ -2,8 +2,8 @@ import { WalletButton } from "@/components/wallet-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LiveTicker } from "@/components/live-ticker";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { getSessionCookie } from "better-auth/cookies";
 import Link from "next/link";
 import { prisma } from "@repo/db";
 import {
@@ -16,11 +16,8 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
+  const sessionCookie = getSessionCookie(await headers());
+  if (!sessionCookie) {
     redirect("/login");
   }
 

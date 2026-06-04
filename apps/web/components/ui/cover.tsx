@@ -1,36 +1,32 @@
 "use client";
 
-import { useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
-import { useRef } from "react";
+import { memo, useState, type ComponentProps, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { AnimatePresence, motion } from "motion/react";
 import { SparklesCore } from "@/components/ui/sparkles";
 
-const beamPositions = Array.from({ length: 7 }, (_, i) => (i + 1) * 8);
-const beamConfigs = beamPositions.map((position, index) => ({
-  position,
+const beamConfigs = Array.from({ length: 7 }, (_, index) => ({
+  style: { top: `${(index + 1) * 8}px` },
   duration: 1 + (index % 3) * 0.45,
   delay: 1 + (index % 5) * 0.3,
   hoverDelay: 0.2 + (index % 4) * 0.15,
   hoverRepeatDelay: 1 + (index % 3) * 0.35,
 }));
 
-export const Cover = ({
+export const Cover = memo(function Cover({
   children,
   className,
 }: {
-  children?: React.ReactNode;
+  children?: ReactNode;
   className?: string;
-}) => {
-  const ref = useRef<HTMLDivElement>(null);
+}) {
   const [hovered, setHovered] = useState(false);
 
   return (
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      ref={ref}
-      className="group/cover relative inline-block rounded-sm bg-primary/80 px-2 py-2 transition duration-200 hover:bg-primary-foreground/90"
+      className="group/cover relative inline-block rounded-sm bg-primary/80 p-2 transition-colors duration-200 hover:bg-primary-foreground/90"
     >
       <AnimatePresence>
         {hovered && (
@@ -43,36 +39,15 @@ export const Cover = ({
                 duration: 0.2,
               },
             }}
-            className="absolute inset-0 h-full w-full overflow-hidden"
+            className="pointer-events-none absolute inset-0 h-full w-full overflow-hidden"
           >
-            <motion.div
-              animate={{
-                translateX: ["-50%", "0%"],
-              }}
-              transition={{
-                translateX: {
-                  duration: 10,
-                  ease: "linear",
-                  repeat: Infinity,
-                },
-              }}
-              className="flex h-full w-[200%]"
-            >
-              <SparklesCore
-                background="transparent"
-                minSize={0.4}
-                maxSize={1}
-                particleDensity={500}
-                particleColor="#FFFFFF"
-              />
-              <SparklesCore
-                background="transparent"
-                minSize={0.4}
-                maxSize={1}
-                particleDensity={500}
-                particleColor="#FFFFFF"
-              />
-            </motion.div>
+            <SparklesCore
+              background="transparent"
+              minSize={0.4}
+              maxSize={1}
+              particleDensity={500}
+              particleColor="#FFFFFF"
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -85,45 +60,36 @@ export const Cover = ({
           delay={beam.delay}
           hoverDelay={beam.hoverDelay}
           hoverRepeatDelay={beam.hoverRepeatDelay}
-          style={{
-            top: `${beam.position}px`,
-          }}
+          style={beam.style}
         />
       ))}
       <motion.span
-        key={String(hovered)}
         animate={{
           scale: hovered ? 0.8 : 1,
           x: hovered ? [0, -30, 30, -30, 30, 0] : 0,
           y: hovered ? [0, 30, -30, 30, -30, 0] : 0,
         }}
-        exit={{
-          filter: "none",
-          scale: 1,
-          x: 0,
-          y: 0,
-        }}
-        transition={{
-          duration: 0.2,
-          x: {
-            duration: 0.2,
-            repeat: Infinity,
-            repeatType: "loop",
-          },
-          y: {
-            duration: 0.2,
-            repeat: Infinity,
-            repeatType: "loop",
-          },
-          scale: {
-            duration: 0.2,
-          },
-          filter: {
-            duration: 0.2,
-          },
-        }}
+        transition={
+          hovered
+            ? {
+                x: {
+                  duration: 0.2,
+                  repeat: Infinity,
+                  repeatType: "loop",
+                },
+                y: {
+                  duration: 0.2,
+                  repeat: Infinity,
+                  repeatType: "loop",
+                },
+                scale: {
+                  duration: 0.2,
+                },
+              }
+            : undefined
+        }
         className={cn(
-          "relative z-20 inline-block text-foreground transition duration-200 group-hover/cover:text-primary",
+          "pointer-events-none relative z-20 inline-block text-foreground transition duration-200 group-hover/cover:text-primary",
           className
         )}
       >
@@ -135,9 +101,9 @@ export const Cover = ({
       <CircleIcon className="absolute -bottom-0.5 -left-0.5" delay={1.6} />
     </div>
   );
-};
+});
 
-export const Beam = ({
+export const Beam = memo(function Beam({
   id,
   className,
   delay,
@@ -154,15 +120,16 @@ export const Beam = ({
   hoverDelay: number;
   hoverRepeatDelay: number;
   hovered?: boolean;
-} & React.ComponentProps<typeof motion.svg>) => {
-
+} & ComponentProps<typeof motion.svg>) {
   return (
     <motion.svg
       height="1"
-      viewBox={`0 0 220 1`}
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={cn("absolute inset-x-0 w-full", className)}
+      className={cn(
+        "pointer-events-none absolute inset-0 max-w-full",
+        className
+      )}
       {...svgProps}
     >
       <motion.path d={`M0 0.5H220`} stroke={`url(#svgGradient-${id})`} />
@@ -170,17 +137,16 @@ export const Beam = ({
       <defs>
         <motion.linearGradient
           id={`svgGradient-${id}`}
-          key={String(hovered)}
           gradientUnits="userSpaceOnUse"
           initial={{
             x1: "0%",
-            x2: hovered ? "-10%" : "-5%",
+            x2: "-5%",
             y1: 0,
             y2: 0,
           }}
           animate={{
             x1: "110%",
-            x2: hovered ? "100%" : "105%",
+            x2: "105%",
             y1: 0,
             y2: 0,
           }}
@@ -199,15 +165,15 @@ export const Beam = ({
       </defs>
     </motion.svg>
   );
-};
+});
 
-export const CircleIcon = ({
+export const CircleIcon = memo(function CircleIcon({
   className,
   delay,
 }: {
   className?: string;
   delay: number;
-}) => {
+}) {
   return (
     <div
       className={cn(
@@ -217,4 +183,4 @@ export const CircleIcon = ({
       style={{ animationDelay: `${delay}s` }}
     />
   );
-};
+});
